@@ -300,6 +300,35 @@ const DataManagement = () => {
       return
     }
 
+    // Validation: Girls + Boys <= 100
+    const girls = parseFloat(formData.girlsPercentage) || 0;
+    const boys = parseFloat(formData.boysPercentage) || 0;
+    if (girls + boys > 100) {
+      showToast('Girls % and Boys % combined should not exceed 100%', 'error');
+      return;
+    }
+    if (girls + boys < 100) {
+      showToast('Girls % and Boys % combined should be 100%', 'error');
+      return;
+    }
+
+
+
+    // Validation: Poverty + Disability + Other <= 100
+    const poverty = parseFloat(formData.povertyPercentage) || 0;
+    const disability = parseFloat(formData.disabilityPercentage) || 0;
+    const other = parseFloat(formData.otherPercentage) || 0;
+    if (poverty + disability + other > 100) {
+      showToast('Poverty %, Disability %, and Other % combined should not exceed 100%', 'error');
+      return;
+    }
+    if (poverty + disability + other < 100) {
+      showToast('Poverty %, Disability %, and Other % combined should be 100%', 'error');
+      return;
+    }
+
+
+
     try {
       // Transform form data to match backend schema
       const transformedData = transformFormDataForAPI(formData)

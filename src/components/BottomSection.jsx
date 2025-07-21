@@ -4,21 +4,6 @@ import axiosInstance from '../utils/axiosInstance'
 import { API_PATHS } from '../utils/apiPaths'
 
 function BottomSection() {
-  // OOSC by District data
-  // const districtData = [
-  //   { name: 'Peshawar', value: 85 },
-  //   { name: 'Swat', value: 70 },
-  //   { name: 'Mardan', value: 60 },
-  //   { name: 'Bannu', value: 45 },
-  //   { name: 'Other', value: 30 }
-  // ];
-
-  // Access Programmes data
-  // const programData = [
-  //   { name: 'Formal', value: 80 },
-  //   { name: 'Vouchers', value: 50 },
-  //   { name: 'Merged Schools', value: 35 }
-  // ];
 
   // Drop-out Reasons data (dynamic)
   const [dropoutReasons, setDropoutReasons] = useState([
@@ -54,16 +39,26 @@ function BottomSection() {
         }));
         setProgramData(programChartData);
 
-        // District chart: Count occurrences of each district
+
         const districtCounts = {};
         let totalDistricts = 0;
         data.forEach(entry => {
-          const district = entry.district || 'Unknown';
+
+          const rawDistrict = entry.district || 'Unknown';
+          const district = rawDistrict.toLowerCase();
           districtCounts[district] = (districtCounts[district] || 0) + 1;
           totalDistricts++;
         });
+
+        const displayLabels = {};
+        data.forEach(entry => {
+          const rawDistrict = entry.district || 'Unknown';
+          const district = rawDistrict.toLowerCase();
+        
+          displayLabels[district] = rawDistrict.replace(/\b\w/g, c => c.toUpperCase());
+        });
         const districtChartData = Object.entries(districtCounts).map(([district, count]) => ({
-          label: district,
+          label: displayLabels[district] || district,
           value: totalDistricts > 0 ? Math.round((count / totalDistricts) * 100) : 0
         }));
         setDistrictData(districtChartData);
@@ -87,24 +82,26 @@ function BottomSection() {
         let totalPoverty = 0;
         let totalDisability = 0;
         let totalOther = 0;
-        let count = 0;
-
+        let totalDropout = 0;
         data.forEach(entry => {
-          totalPoverty += Number(entry.povertyPercentage) || 0;
-          totalDisability += Number(entry.disabilityPercentage) || 0;
-          totalOther += Number(entry.otherPercentage) || 0;
-          count++;
+          const poverty = Number(entry.povertyPercentage) || 0;
+          const disability = Number(entry.disabilityPercentage) || 0;
+          const other = Number(entry.otherPercentage) || 0;
+          totalPoverty += poverty;
+          totalDisability += disability;
+          totalOther += other;
+          totalDropout += poverty + disability + other;
         });
 
-        // Compute average (or total, if required)
-        const poverty = count ? (totalPoverty / count) : 0;
-        const disability = count ? (totalDisability / count) : 0;
-        const other = count ? (totalOther / count) : 0;
+        // Calculate overall percentage for each reason out of total dropout
+        const povertyPercent = totalDropout ? Math.round((totalPoverty / totalDropout) * 100) : 0;
+        const disabilityPercent = totalDropout ? Math.round((totalDisability / totalDropout) * 100) : 0;
+        const otherPercent = totalDropout ? Math.round((totalOther / totalDropout) * 100) : 0;
 
         setDropoutReasons([
-          { reason: 'Disability', percentage: Math.round(disability), color: 'bg-[#00B8D9]' },
-          { reason: 'Poverty', percentage: Math.round(poverty), color: 'bg-[#F44336]' },
-          { reason: 'Other', percentage: Math.round(other), color: 'bg-[#9C27B0]' },
+          { reason: 'Disability', percentage: disabilityPercent, color: 'bg-[#00B8D9]' },
+          { reason: 'Poverty', percentage: povertyPercent, color: 'bg-[#F44336]' },
+          { reason: 'Other', percentage: otherPercent, color: 'bg-[#9C27B0]' },
         ]);
       } catch (error) {
         console.error('Error fetching dropout reasons:', error);
