@@ -3,6 +3,10 @@ import { Search, Download, FileText, Loader2, ChevronLeft, ChevronRight } from '
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const Reports = () => {
   const [filters, setFilters] = useState({
@@ -33,6 +37,15 @@ const Reports = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const [goToPage, setGoToPage] = useState('')
+
+  // Independent export district selection for export only
+  const [exportDistrict, setExportDistrict] = useState('Select...');
+
+  // Export loading states
+  const [exportLoading, setExportLoading] = useState({
+    excel: false,
+    pdf: false
+  });
 
   // Fetch data from API
   useEffect(() => {
@@ -229,7 +242,7 @@ const Reports = () => {
 
     return Object.values(chartData);
   };
-    // Generate table data from filtered data
+  // Generate table data from filtered data
   const generateTableData = () => {
     if (!filteredData.length) return []
 
@@ -244,7 +257,13 @@ const Reports = () => {
       poverty: entry.povertyPercentage || 0,
       disability: entry.disabilityPercentage || 0,
       other: entry.otherPercentage || 0,
-      date: entry.date ? new Date(entry.date).toLocaleDateString() : 'N/A'
+      date: entry.date ? new Date(entry.date).toLocaleDateString() : 'N/A',
+      unioncouncil: entry.unioncouncil || 'N/A',
+      villagecouncil: entry.villagecouncil || 'N/A',
+      pk: entry.pk || 'N/A',
+      tehsil: entry.tehsil || 'N/A',
+      national: entry.national || 'N/A',
+      location: entry.location || 'N/A',
     }))
   }
 
@@ -255,14 +274,213 @@ const Reports = () => {
     }))
   }
 
-  const handleExportExcel = () => {
-    console.log('Exporting to Excel...', filteredData)
-    // Implement Excel export logic here
+  const handleExportExcel = async () => {
+    try {
+      setExportLoading(prev => ({ ...prev, excel: true }));
+
+      // Get the data to export based on district filter
+      const exportRows = exportDistrict !== 'Select...'
+        ? filteredTableData.filter(row => row.district === exportDistrict)
+        : filteredTableData;
+
+      if (exportRows.length === 0) {
+        alert('No data available to export');
+        return;
+      }
+
+      // Prepare data for Excel export
+      const excelData = exportRows.map(row => ({
+        'District': row.district,
+        'Program': row.program,
+        'Total Children': row.totalChildren,
+        'Out of School': row.outOfSchool,
+        'Out of School %': `${row.outOfSchoolRate}%`,
+        'Girls %': `${row.girls}%`,
+        'Boys %': `${row.boys}%`,
+        'Date': row.date,
+        'Union Council': row.unioncouncil,
+        'Village Council': row.villagecouncil,
+        'PK constituency': row.pk,
+        'Tehsil': row.tehsil,
+        'NA constituency': row.national,
+        'Location': row.location
+      }));
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const columnWidths = [
+        { wch: 15 }, // District
+        { wch: 18 }, // Union Council
+        { wch: 18 }, // Village Council
+        { wch: 18 }, // PK constituency
+        { wch: 15 }, // Tehsil
+        { wch: 18 }, // NA constituency
+        { wch: 20 }, // Location
+        { wch: 20 }, // Program
+        { wch: 15 }, // Total Children
+        { wch: 15 }, // Out of School
+        { wch: 15 }, // Out of School %
+        { wch: 10 }, // Girls %
+        { wch: 10 }, // Boys %
+        { wch: 12 }  // Date
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Reports Data');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const districtSuffix = exportDistrict !== 'Select...' ? `_${exportDistrict.replace(/\s+/g, '_')}` : '';
+      const filename = `OOSC_Reports${districtSuffix}_${timestamp}.xlsx`;
+
+      // Export the file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, filename);
+
+      console.log(`✅ Excel export successful: ${filename} (${exportRows.length} rows)`);
+
+    } catch (error) {
+      console.error('❌ Excel export failed:', error);
+      alert('Failed to export Excel file. Please try again.');
+    } finally {
+      setExportLoading(prev => ({ ...prev, excel: false }));
+    }
   }
 
-  const handleExportPDF = () => {
-    console.log('Exporting to PDF...', filteredData)
-    // Implement PDF export logic here
+  const handleExportPDF = async () => {
+    try {
+      setExportLoading(prev => ({ ...prev, pdf: true }));
+
+      // Get the data to export based on district filter
+      const exportRows = exportDistrict !== 'Select...'
+        ? filteredTableData.filter(row => row.district === exportDistrict)
+        : filteredTableData;
+
+      if (exportRows.length === 0) {
+        alert('No data available to export');
+        return;
+      }
+
+      // Create PDF document
+      const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
+
+      // Add title
+      const title = exportDistrict !== 'Select...'
+        ? `OOSC Reports - ${exportDistrict} District`
+        : 'OOSC Reports - All Districts';
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, 20, 20);
+
+      // Add generation date
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 30);
+      doc.text(`Total Records: ${exportRows.length}`, 20, 36);
+
+      // Prepare table data
+      const tableHeaders = [
+        'District',
+        'Program',
+        'Total Children',
+        'Out of School',
+        'Out of School %',
+        'Girls %',
+        'Boys %',
+        'Date',
+        'Union Council',
+        'Village Council',
+        'PK constituency',
+        'Tehsil',
+        'NA constituency',
+        'Location'
+      ];
+
+      const tableData = exportRows.map(row => [
+        row.district,
+        row.program,
+        row.totalChildren.toLocaleString(),
+        row.outOfSchool.toLocaleString(),
+        `${row.outOfSchoolRate}%`,
+        `${row.girls}%`,
+        `${row.boys}%`,
+        row.date,
+        row.unioncouncil,
+        row.villagecouncil,
+        row.pk,
+        row.tehsil,
+        row.national,
+        row.location
+      ]);
+
+      // Add table using autoTable
+      autoTable(doc, {
+        head: [tableHeaders],
+        body: tableData,
+        startY: 45,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [66, 139, 202], // Bootstrap blue
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245], // Light gray
+        },
+        columnStyles: {
+          0: { cellWidth: 20 }, // District
+          1: { cellWidth: 25 }, // Union Council
+          2: { cellWidth: 25 }, // Village Council
+          3: { cellWidth: 25 }, // PK constituency
+          4: { cellWidth: 20 }, // Tehsil
+          5: { cellWidth: 25 }, // NA constituency
+          6: { cellWidth: 30 }, // Location
+          7: { cellWidth: 35 }, // Program
+          8: { cellWidth: 20 }, // Total Children
+          9: { cellWidth: 20 }, // Out of School
+          10: { cellWidth: 20 }, // Out of School %
+          11: { cellWidth: 15 }, // Girls %
+          12: { cellWidth: 15 }, // Boys %
+          13: { cellWidth: 20 }, // Date
+        },
+        margin: { left: 20, right: 20 },
+        didDrawPage: (data) => {
+          // Add page numbers
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageSize = doc.internal.pageSize;
+          const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+
+          doc.setFontSize(8);
+          doc.text(`Page ${data.pageNumber} of ${pageCount}`,
+            pageSize.width - 30, pageHeight - 10);
+        }
+      });
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const districtSuffix = exportDistrict !== 'Select...' ? `_${exportDistrict.replace(/\s+/g, '_')}` : '';
+      const filename = `OOSC_Reports${districtSuffix}_${timestamp}.pdf`;
+
+      // Save the PDF
+      doc.save(filename);
+
+      console.log(`✅ PDF export successful: ${filename} (${exportRows.length} rows)`);
+
+    } catch (error) {
+      console.error('❌ PDF export failed:', error);
+      alert('Failed to export PDF file. Please try again.');
+    } finally {
+      setExportLoading(prev => ({ ...prev, pdf: false }));
+    }
   }
 
   if (loading) {
@@ -341,15 +559,20 @@ const Reports = () => {
   const chartData = generateChartData()
   const tableData = generateTableData()
 
-  // Get paginated table data
-  const paginatedTableData = getPaginatedEntries(tableData)
-  const totalPages = getTotalPages(tableData.length)
-  const paginationInfo = getPaginationInfo(tableData.length)
+  // Filter table data by exportDistrict if selected
+  const filteredTableData = exportDistrict !== 'Select...'
+    ? tableData.filter(row => row.district === exportDistrict)
+    : tableData;
 
-  console.log('📊 Total table entries:', tableData.length)
-  console.log('📄 Paginated entries for page', currentPage, ':', paginatedTableData.length)
-  console.log('📄 Total pages:', totalPages)
-  console.log('📄 Pagination info:', paginationInfo)
+  // Get paginated table data
+  const paginatedTableData = getPaginatedEntries(filteredTableData);
+  const totalPages = getTotalPages(filteredTableData.length);
+  const paginationInfo = getPaginationInfo(filteredTableData.length);
+
+  console.log('📊 Total table entries:', filteredTableData.length);
+  console.log('📄 Paginated entries for page', currentPage, ':', paginatedTableData.length);
+  console.log('📄 Total pages:', totalPages);
+  console.log('📄 Pagination info:', paginationInfo);
 
   return (
     <div className="p-4 md:p-6 bg-[#F8F9FA]">
@@ -374,18 +597,7 @@ const Reports = () => {
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <span className="font-medium">Reports ({filteredData.length} entries)</span>
               </div>
-              <div className="flex items-center space-x-3 bg-gray-50 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search Here..."
-                  className="text-sm bg-transparent border-none outline-none w-32 md:w-40 placeholder-gray-400"
-                />
-                <span className="text-sm text-gray-500 font-medium">2025</span>
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">U</span>
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -519,6 +731,49 @@ const Reports = () => {
 
           {/* Program Summary Table */}
           <div className="mb-8">
+            {/*  export controls above table */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Export by District :</label>
+                <select
+                  value={exportDistrict}
+                  onChange={e => setExportDistrict(e.target.value)}
+                  className="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="Select...">All Districts</option>
+                  {districts.map(district => (
+                    <option key={district} value={district}>{district}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+            <button
+              onClick={handleExportExcel}
+              disabled={filteredData.length === 0 || exportLoading.excel}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2 text-sm"
+            >
+              {exportLoading.excel ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>{exportLoading.excel ? 'Exporting...' : 'Export Excel'}</span>
+            </button>
+
+            <button
+              onClick={handleExportPDF}
+              disabled={filteredData.length === 0 || exportLoading.pdf}
+              className="bg-[#4A90E2] hover:bg-[#2c5aa0] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2 text-sm"
+            >
+              {exportLoading.pdf ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4" />
+              )}
+              <span>{exportLoading.pdf ? 'Exporting...' : 'Export PDF'}</span>
+            </button>
+          </div>
+            </div>
             <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4">
               Program Summary Table ({tableData.length} total{tableData.length > itemsPerPage ? `, showing ${paginatedTableData.length} on page ${currentPage}` : ''})
             </h3>
@@ -527,71 +782,73 @@ const Reports = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        District
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Program
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Children
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Out of School
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Out of School %
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Girls %
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Boys %
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              District
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Program
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Total Children
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Out of School
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Out of School %
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Girls %
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Boys %
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Date
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Union Council
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Village Council
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              PK constituency
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Tehsil
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              NA constituency
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Location
+            </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedTableData.length > 0 ? (
                       paginatedTableData.map((row, index) => (
                         <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
-                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {row.district}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {row.program}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {row.totalChildren.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {row.outOfSchool.toLocaleString()}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              {row.outOfSchoolRate}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
-                              {row.girls}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {row.boys}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                            {row.date}
-                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.district}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.program}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.totalChildren.toLocaleString()}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.outOfSchool.toLocaleString()}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{row.outOfSchoolRate}%</span></td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">{row.girls}%</span></td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700"><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{row.boys}%</span></td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.date}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.unioncouncil}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.villagecouncil}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.pk}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.tehsil}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.national}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{row.location}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan="14" className="px-4 py-8 text-center text-gray-500">
                           {tableData.length === 0 ? 'No data available for the selected filters' : 'No entries on this page'}
                         </td>
                       </tr>
@@ -690,26 +947,6 @@ const Reports = () => {
             )}
           </div>
 
-          {/* Export Buttons */}
-          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-            <button
-              onClick={handleExportExcel}
-              disabled={filteredData.length === 0}
-              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2 text-sm"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export Excel</span>
-            </button>
-
-            <button
-              onClick={handleExportPDF}
-              disabled={filteredData.length === 0}
-              className="bg-[#4A90E2] hover:bg-[#2c5aa0] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2 text-sm"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Export PDF</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>
