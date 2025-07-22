@@ -5,6 +5,7 @@ import {
   Database,
   Users,
   MapPin,
+  Map,
   FileText,
   LogOut,
   X
@@ -20,6 +21,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate }) => {
     { icon: Database, label: 'Data Management', path: '/dashboard/data-management' },
     { icon: Users, label: 'Programs', path: '/dashboard/programs' },
     { icon: MapPin, label: 'Districts', path: '/dashboard/districts' },
+    { icon: Map, label: 'Map', path: '/dashboard/map' },
     { icon: FileText, label: 'Reports', path: '/dashboard/reports' },
     { icon: Users, label: 'Users', path: '/dashboard/users' },
   ]

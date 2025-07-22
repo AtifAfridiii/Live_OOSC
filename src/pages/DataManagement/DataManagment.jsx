@@ -6,6 +6,17 @@ import { API_PATHS } from '../../utils/apiPaths'
 import { isUserAuthenticated, getAuthToken, clearAuthData } from '../../utils/authHelpers'
 import Toast from '../../components/Toast'
 import DeleteConfirmationAlert from '../../components/DeleteConfirmationAlert'
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Fix for default markers in react-leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
 
 const DataManagement = () => {
   const navigate = useNavigate()
@@ -44,6 +55,10 @@ const DataManagement = () => {
     tehsil: ''
   })
 
+  // Map state
+  const [mapPosition, setMapPosition] = useState([34.0151, 71.5249]) // Default to Peshawar, Pakistan
+  const [markerPosition, setMarkerPosition] = useState(null)
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -51,8 +66,69 @@ const DataManagement = () => {
     }))
   }
 
+  // Map click handler component
+  const MapClickHandler = () => {
+    useMapEvents({
+      click: (e) => {
+        const { lat, lng } = e.latlng
+        setMarkerPosition([lat, lng])
+        // Format coordinates and update location field
+        const locationString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+        handleInputChange('location', locationString)
+      }
+    })
+    return null
+  }
+
+  // Interactive Map Component
+  const InteractiveMap = () => {
+    try {
+      return (
+        <div className="w-full h-64 border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+          <MapContainer
+            center={mapPosition}
+            zoom={8}
+            style={{ height: '100%', width: '100%' }}
+            className="z-0"
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            <MapClickHandler />
+            {markerPosition && (
+              <Marker position={markerPosition} />
+            )}
+          </MapContainer>
+        </div>
+      )
+    } catch (error) {
+      console.error('Error rendering map:', error)
+      return (
+        <div className="w-full h-64 border border-gray-300 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+          <div className="text-center text-gray-500">
+            <p>Map could not be loaded</p>
+            <p className="text-sm">Please check your internet connection</p>
+          </div>
+        </div>
+      )
+    }
+  }
+
   // Transform form data to match backend schema with correct data types
-  const transformFormDataForAPI = (data) => {
+  const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) => {
+    let lat = '';
+    let log = '';
+    if (isEdit && markerPosition && Array.isArray(markerPosition)) {
+      lat = markerPosition[0];
+      log = markerPosition[1];
+    } else if (!isEdit && data.location) {
+      const locationParts = data.location.split(',');
+      if (locationParts.length === 2) {
+        lat = parseFloat(locationParts[0].trim());
+        log = parseFloat(locationParts[1].trim());
+      }
+    }
     return {
       district: data.district,
       totalChildren: parseInt(data.totalChildren) || 0,
@@ -68,7 +144,8 @@ const DataManagement = () => {
       villagecouncil: data.villagecouncil,
       pk: data.pk,
       national: data.national,
-      location: data.location,
+      lat: lat,
+      log: log,
       tehsil: data.tehsil
     }
   }
@@ -298,6 +375,22 @@ const DataManagement = () => {
     })
   }, [entries])
 
+  // Watch for manual location input changes and update marker
+  useEffect(() => {
+    if (formData.location) {
+      const locationParts = formData.location.split(',')
+      if (locationParts.length === 2) {
+        const lat = parseFloat(locationParts[0].trim())
+        const lng = parseFloat(locationParts[1].trim())
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          setMarkerPosition([lat, lng])
+        }
+      }
+    } else {
+      setMarkerPosition(null)
+    }
+  }, [formData.location])
+
   const handleAddEntry = async () => {
     if (
       !formData.district ||
@@ -312,6 +405,16 @@ const DataManagement = () => {
       return
     }
 
+    const totalChildren = parseInt(formData.totalChildren) || 0;
+    const outOfSchoolChildren = parseInt(formData.outOfSchoolChildren) || 0;
+    if (outOfSchoolChildren > totalChildren) {
+      showToast('Out of School Children should not be greater than Total Children', 'error');
+      return;
+    } else if (outOfSchoolChildren < 0) {
+      showToast('Out of School Children should not be negative', 'error');
+      return;
+    }
+
     // Validation: Girls + Boys <= 100
     const girls = parseFloat(formData.girlsPercentage) || 0;
     const boys = parseFloat(formData.boysPercentage) || 0;
@@ -323,8 +426,6 @@ const DataManagement = () => {
       showToast('Girls % and Boys % combined should be 100%', 'error');
       return;
     }
-
-
 
     // Validation: Poverty + Disability + Other <= 100
     const poverty = parseFloat(formData.povertyPercentage) || 0;
@@ -339,28 +440,27 @@ const DataManagement = () => {
       return;
     }
 
-
-
     try {
-      // Transform form data to match backend schema
-      const transformedData = transformFormDataForAPI(formData)
-      console.log('📤 Sending transformed data:', transformedData)
-
+      let transformedData;
       if (isEditMode && editingEntryId) {
-        await updateEntry(editingEntryId, transformedData)
-        setIsEditMode(false)
-        setEditingEntryId(null)
+        // Use markerPosition for lat/log in update
+        transformedData = transformFormDataForAPI(formData, markerPosition, true);
+        await updateEntry(editingEntryId, transformedData);
+        setIsEditMode(false);
+        setEditingEntryId(null);
       } else {
-        await createEntry(transformedData)
+        // Use form location for lat/log in add
+        transformedData = transformFormDataForAPI(formData, null, false);
+        await createEntry(transformedData);
       }
 
-      setShowSuccessMessage(true)
-      setTimeout(() => setShowSuccessMessage(false), 3000)
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
 
-      handleReset()
-      setShowForm(false)
+      handleReset();
+      setShowForm(false);
     } catch (error) {
-      console.error('Error in handleAddEntry:', error)
+      console.error('Error in handleAddEntry:', error);
     }
   }
 
@@ -384,9 +484,23 @@ const DataManagement = () => {
         villagecouncil: entry.villagecouncil || '',
         pk: entry.pk || '',
         national: entry.national || '',
-        location: entry.location || '',
+        location: entry.lat+","+entry.log || '',
         tehsil: entry.tehsil || ''
       })
+
+      // Parse existing location coordinates and set marker position
+      if (entry.location) {
+        const locationParts = entry.location.split(',')
+        if (locationParts.length === 2) {
+          const lat = parseFloat(locationParts[0].trim())
+          const lng = parseFloat(locationParts[1].trim())
+          if (!isNaN(lat) && !isNaN(lng)) {
+            setMarkerPosition([lat, lng])
+          }
+        }
+      } else {
+        setMarkerPosition(null)
+      }
 
       setIsEditMode(true)
       setEditingEntryId(entryId)
@@ -441,6 +555,7 @@ const DataManagement = () => {
       location: '',
       tehsil: ''
     })
+    setMarkerPosition(null) // Reset map marker
     setShowSuccessMessage(false)
     setIsEditMode(false)
     setEditingEntryId(null)
@@ -775,10 +890,47 @@ const DataManagement = () => {
                       onChange={(e) => handleInputChange('location', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
                       placeholder="Add GPS Location"
+                      disabled={isEditMode}
                     />
+                    {isEditMode ? (
+                      <span className="text-xs text-gray-500">In edit mode, location can only be changed by selecting a new point on the map below.</span>
+                    ) : (
+                      <span className="text-xs text-gray-500">Enter coordinates or select a point on the map below.</span>
+                    )}
                   </div>
                 </div>
               </div>
+               {/* Interactive Map */}
+                <div className="mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Click on the map to select location
+                        </label>
+                        {markerPosition && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMarkerPosition(null)
+                              handleInputChange('location', '')
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 underline"
+                          >
+                            Clear location
+                          </button>
+                        )}
+                      </div>
+                      <InteractiveMap />
+                      <div className="flex justify-between items-center mt-1">
+                        <p className="text-xs text-gray-500">
+                          Click anywhere on the map to automatically populate coordinates
+                        </p>
+                        {markerPosition && (
+                          <p className="text-xs text-green-600 font-medium">
+                            📍 Location selected
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
               {/* Row: Barriers */}
               <div className="flex flex-col md:flex-row md:space-x-6 mb-6 pt-4">
@@ -959,7 +1111,7 @@ const DataManagement = () => {
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.pk}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.tehsil}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.national}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.location}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.lat+" , "+entry.log}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-3">
                             <button

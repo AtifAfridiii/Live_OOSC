@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Download, FileText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import {  Download, FileText, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import Toast from '../../components/Toast'
 
 const Reports = () => {
   const [filters, setFilters] = useState({
@@ -246,25 +247,35 @@ const Reports = () => {
   const generateTableData = () => {
     if (!filteredData.length) return []
 
-    return filteredData.map(entry => ({
-      district: entry.district || 'N/A',
-      program: entry.programType || 'N/A',
-      totalChildren: entry.totalChildren || 0,
-      outOfSchool: entry.outOfSchoolChildren || 0,
-      outOfSchoolRate: entry.totalChildren > 0 ? ((entry.outOfSchoolChildren / entry.totalChildren) * 100).toFixed(1) : 0,
-      girls: entry.girlsPercentage || 0,
-      boys: entry.boysPercentage || 0,
-      poverty: entry.povertyPercentage || 0,
-      disability: entry.disabilityPercentage || 0,
-      other: entry.otherPercentage || 0,
-      date: entry.date ? new Date(entry.date).toLocaleDateString() : 'N/A',
-      unioncouncil: entry.unioncouncil || 'N/A',
-      villagecouncil: entry.villagecouncil || 'N/A',
-      pk: entry.pk || 'N/A',
-      tehsil: entry.tehsil || 'N/A',
-      national: entry.national || 'N/A',
-      location: entry.location || 'N/A',
-    }))
+    return filteredData.map(entry => {
+      // Format coordinates as "lat, lng" if both lat and log exist
+      let locationCoordinates = 'N/A';
+      if (entry.lat !== undefined && entry.log !== undefined &&
+          entry.lat !== null && entry.log !== null &&
+          entry.lat !== '' && entry.log !== '') {
+        locationCoordinates = `${entry.lat}, ${entry.log}`;
+      }
+
+      return {
+        district: entry.district || 'N/A',
+        program: entry.programType || 'N/A',
+        totalChildren: entry.totalChildren || 0,
+        outOfSchool: entry.outOfSchoolChildren || 0,
+        outOfSchoolRate: entry.totalChildren > 0 ? ((entry.outOfSchoolChildren / entry.totalChildren) * 100).toFixed(1) : 0,
+        girls: entry.girlsPercentage || 0,
+        boys: entry.boysPercentage || 0,
+        poverty: entry.povertyPercentage || 0,
+        disability: entry.disabilityPercentage || 0,
+        other: entry.otherPercentage || 0,
+        date: entry.date ? new Date(entry.date).toLocaleDateString() : 'N/A',
+        unioncouncil: entry.unioncouncil || 'N/A',
+        villagecouncil: entry.villagecouncil || 'N/A',
+        pk: entry.pk || 'N/A',
+        tehsil: entry.tehsil || 'N/A',
+        national: entry.national || 'N/A',
+        location: locationCoordinates,
+      }
+    })
   }
 
   const handleFilterChange = (filterType, value) => {
@@ -284,7 +295,7 @@ const Reports = () => {
         : filteredTableData;
 
       if (exportRows.length === 0) {
-        alert('No data available to export');
+        <Toast message="No data available to export" type="error" />
         return;
       }
 
@@ -346,7 +357,7 @@ const Reports = () => {
 
     } catch (error) {
       console.error('❌ Excel export failed:', error);
-      alert('Failed to export Excel file. Please try again.');
+      <Toast message="Failed to export Excel file. Please try again." type="error" />
     } finally {
       setExportLoading(prev => ({ ...prev, excel: false }));
     }
