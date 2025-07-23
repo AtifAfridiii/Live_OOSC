@@ -30,6 +30,7 @@ const DataManagement = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userRole, setUserRole] = useState('')
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -341,16 +342,31 @@ const DataManagement = () => {
     return { startItem, endItem, totalItems }
   }
 
-  // Check authentication and load entries on component mount
+  // Check authentication, load entries, and get user role on component mount
   useEffect(() => {
     const initializeComponent = async () => {
       console.log('🚀 Initializing DataManagement component...')
-
-      // Check authentication first
       const isAuth = checkAuthentication()
-
       if (isAuth) {
-        console.log('✅ User is authenticated, loading data...')
+        // Fetch user profile to get role
+        try {
+          console.log('🧪 Testing token with profile endpoint...')
+          const profileResponse = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE)
+          console.log('✅ Profile test successful:', profileResponse.data)
+          const role = profileResponse.data?.role || profileResponse.data?.user?.role || ''
+          setUserRole(role)
+        } catch (error) {
+          console.error('❌ Profile test failed:', error.response?.status, error.response?.data)
+          if (error.response?.status === 401) {
+            console.warn('🔐 Token is invalid or expired')
+            showToast('Session expired. Please login again.', 'error')
+            setTimeout(() => {
+              localStorage.clear();
+              window.location.href = '/login';
+            }, 2000);
+            return;
+          }
+        }
         try {
           await fetchAllEntries()
         } catch (error) {
@@ -362,7 +378,6 @@ const DataManagement = () => {
         showToast('Please login to access data management', 'error')
       }
     }
-
     initializeComponent()
   }, [])
 
@@ -613,8 +628,13 @@ const DataManagement = () => {
     const matchesDistrict = entry?.district?.toLowerCase().includes(searchLower)
     const matchesProgram = entry?.programType?.toLowerCase().includes(searchLower)
     const matchesDate = entry?.date?.toLowerCase().includes(searchLower)
+    const tehsilName = entry?.tehsil?.toLowerCase().includes(searchLower)
+    const unionCouncilName = entry?.unioncouncil?.toLowerCase().includes(searchLower)
+    const villageCouncilName = entry?.villagecouncil?.toLowerCase().includes(searchLower)
+    const pkName = entry?.pk?.toLowerCase().includes(searchLower)
+    const nationalName = entry?.national?.toLowerCase().includes(searchLower)
 
-    const matches = matchesDistrict || matchesProgram || matchesDate
+    const matches = matchesDistrict || matchesProgram || matchesDate || tehsilName || unionCouncilName || villageCouncilName || pkName || nationalName
 
     if (matches) {
       console.log('✅ Entry matches search:', entry.district, entry.programType, entry.date)
@@ -699,13 +719,12 @@ const DataManagement = () => {
                 <>
                   <button
                     onClick={handleShowForm}
-                    className="bg-[#4A90E2] hover:bg-[#2c5aa0] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors duration-200"
+                    className={`bg-[#4A90E2] hover:bg-[#2c5aa0] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors duration-200 ${userRole === 'Viewer' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={userRole === 'Viewer'}
                   >
                     <Plus className="w-5 h-5" />
                     Add Entry
                   </button>
-
-
                 </>
               )}
             </div>
@@ -986,8 +1005,8 @@ const DataManagement = () => {
                 <button
                   onClick={handleAddEntry}
                   type="button"
-                  disabled={loading}
-                  className="w-full md:w-auto mb-2 md:mb-0 bg-[#4A90E2] hover:bg-[#2c5aa0] disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-2 rounded-lg font-medium text-lg shadow-sm transition-colors duration-200 flex items-center justify-center"
+                  disabled={loading || userRole === 'Viewer'}
+                  className={`w-full md:w-auto mb-2 md:mb-0 bg-[#4A90E2] hover:bg-[#2c5aa0] disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-8 py-2 rounded-lg font-medium text-lg shadow-sm transition-colors duration-200 flex items-center justify-center ${userRole === 'Viewer' ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {loading ? (
                     <>
@@ -1116,16 +1135,16 @@ const DataManagement = () => {
                           <div className="flex items-center space-x-3">
                             <button
                               onClick={() => handleEditEntry(entry.id || entry._id)}
-                              disabled={loading}
-                              className="text-blue-600 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                              disabled={loading || userRole === 'Viewer'}
+                              className={`text-blue-600 hover:text-blue-900 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center ${userRole === 'Viewer' ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                               <Edit className="w-4 h-4 mr-1" />
                               Edit
                             </button>
                             <button
                               onClick={() => handleDeleteEntry(entry.id || entry._id)}
-                              disabled={loading}
-                              className="text-red-600 hover:text-red-900 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center"
+                              disabled={loading || userRole === 'Viewer'}
+                              className={`text-red-600 hover:text-red-900 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center ${userRole === 'Viewer' ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                               <Trash2 className="w-4 h-4 mr-1" />
                               Delete

@@ -8,6 +8,7 @@ import { getAuthToken, isUserAuthenticated } from '../../utils/authHelpers';
 
 
 export default function Users() {
+    const [currentUserRole, setCurrentUserRole] = useState('');
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
@@ -200,9 +201,7 @@ export default function Users() {
                 updateData.confirmPassword = editForm.confirmPassword;
             }
 
-            // IMPORTANT: Backend bug workaround
-            // The backend currently uses req.user.id instead of req.params.id
-            // This means it will always update the currently logged-in user, not the target user
+
             console.warn('⚠️ BACKEND BUG: The update will affect the logged-in user, not the target user');
             console.log('Target user ID:', editingUser._id);
             console.log('Update data:', updateData);
@@ -289,7 +288,7 @@ export default function Users() {
         }
     }
 
-    // Test token validity on component mount
+    // Test token validity and get current user role on component mount
     useEffect(() => {
         const testTokenValidity = async () => {
             const token = getAuthToken();
@@ -305,6 +304,8 @@ export default function Users() {
                 console.log('🧪 Testing token with profile endpoint...');
                 const profileResponse = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE);
                 console.log('✅ Profile test successful:', profileResponse.data);
+                const role = profileResponse.data?.role || profileResponse.data?.user?.role || '';
+                setCurrentUserRole(role);
             } catch (error) {
                 console.error('❌ Profile test failed:', error.response?.status, error.response?.data);
                 if (error.response?.status === 401) {
@@ -354,8 +355,9 @@ export default function Users() {
     pt-4 md:pt-0
   ">
              <button
-                className="text-[#4A90E2] text-sm font-medium bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg w-full md:w-auto"
+                className={`text-[#4A90E2] text-sm font-medium bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg w-full md:w-auto ${['Viewer','DistrictProgramOfficer'].includes(currentUserRole) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onClick={() => setShowAddModal(true)}
+                disabled={['Viewer','DistrictProgramOfficer'].includes(currentUserRole)}
               >
                 +Add User
               </button>
@@ -484,11 +486,11 @@ export default function Users() {
                     value={addForm.role}
                     onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}
                   >
-                    <option value="" disabled>Select role</option>
-                    <option value="user">User</option>
+                    <option value="" disabled>Select a role</option>
+                    <option value="Viewer">Viewer</option>
                     <option value="admin">Admin</option>
-                    <option value="superadmin">Superadmin</option>
-                    <option value="moderator">Moderator</option>
+                    <option value="DirectorProgram">Director Program</option>
+                    <option value="DistrictProgramOfficer">District Program Officer</option>
                   </select>
                   {addFieldErrors.role && <div className="text-red-500 text-xs mt-1">{addFieldErrors.role}</div>}
                 </div>
@@ -638,22 +640,22 @@ export default function Users() {
                   {editFieldErrors.email && <div className="text-red-500 text-xs mt-1">{editFieldErrors.email}</div>}
                 </div>
                 <div className="mb-2">
-                  <label className="block text-xs md:text-sm font-medium mb-1">Role</label>
+                  <label>Role</label>
                   <select
                     className={`w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition text-xs md:text-base ${editFieldErrors.role ? 'border-red-500' : 'border-gray-300'}`}
                     value={editForm.role}
                     onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}
                   >
-                    <option value="" disabled>Select role</option>
-                    <option value="user">User</option>
+                    <option value="" disabled>Select a role</option>
+                    <option value="Viewer">Viewer</option>
                     <option value="admin">Admin</option>
-                    <option value="superadmin">Superadmin</option>
-                    <option value="moderator">Moderator</option>
+                    <option value="DirectorProgram">Director Program</option>
+                    <option value="DistrictProgramOfficer">District Program Officer</option>
                   </select>
                   {editFieldErrors.role && <div className="text-red-500 text-xs mt-1">{editFieldErrors.role}</div>}
                 </div>
                 <div className="mb-2">
-                  <label className="block text-xs md:text-sm font-medium mb-1">New Password (Optional)</label>
+                  <label className="block text-xs md:text-sm font-medium mb-1">New Password</label>
                   <div className="relative">
                     <input
                       type={showEditPassword ? "text" : "password"}
@@ -808,18 +810,18 @@ export default function Users() {
       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
         <span className="inline-flex items-center gap-2">
           <button
-            className="p-1 rounded hover:bg-blue-100 text-blue-600"
+            className={`p-1 rounded hover:bg-blue-100 text-blue-600 ${['Viewer','DistrictProgramOfficer'].includes(currentUserRole) ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Edit"
             onClick={() => handleEditUser(row)}
-            disabled={loading}
+            disabled={loading || ['Viewer','DistrictProgramOfficer'].includes(currentUserRole)}
           >
             <FaEdit />
           </button>
           <button
-            className="p-1 rounded hover:bg-red-100 text-red-600"
+            className={`p-1 rounded hover:bg-red-100 text-red-600 ${['Viewer','DistrictProgramOfficer'].includes(currentUserRole) ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Delete"
             onClick={() => handleDeleteUser(row)}
-            disabled={loading}
+            disabled={loading || ['Viewer','DistrictProgramOfficer'].includes(currentUserRole)}
           >
             <FaTrash />
           </button>

@@ -10,7 +10,7 @@ export const API_PATHS = {
     AUTH: {
         LOGIN: "/api/users/login",
         REGISTER: "/api/users/register",
-        GET_PROFILE: "/api/users/profile",
+        GET_PROFILE: "/api/users/me",
     },
 
     USERS: {

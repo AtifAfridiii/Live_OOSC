@@ -16,7 +16,7 @@ export default function Programs() {
 
     const COLORS = ["#4285F4", "#EC4899"];
 
-    // Static trend data 
+    // Static trend data
     const trendData = [
         { year: '2019', value: 4.2 },
         { year: '2020', value: 4.5 },
@@ -257,7 +257,7 @@ export default function Programs() {
 
             setEntries(entriesData);
 
-          
+
             const uniquePrograms = extractUniquePrograms(entriesData);
             setPrograms(uniquePrograms);
 
@@ -279,26 +279,26 @@ export default function Programs() {
         }
     };
 
-   
+
     useEffect(() => {
         console.log('🚀 [DEBUG] Component mounted, fetching entries...');
-        fetchAllEntries(true); 
+        fetchAllEntries(true);
     }, []);
 
-   
+
     useEffect(() => {
         if (!selectedProgramType && programs.length > 0) {
             setSelectedProgramType(programs[0].type);
         }
     }, [programs, selectedProgramType]);
 
-    
+
     const handleProgramSelect = (programType) => {
         console.log('📌 [DEBUG] Program selected:', programType);
         setSelectedProgramType(programType);
     };
 
-   
+
     const getFilteredData = () => {
         console.log('🔄 [DEBUG] Getting filtered data for program:', selectedProgramType);
         const filteredEntries = filterEntriesByProgram(entries, selectedProgramType);
@@ -459,7 +459,7 @@ export default function Programs() {
 
                 {/* Custom Statistics Cards */}
                 <div className="max-w-7xl mx-auto space-y-4 md:space-y-6 pb-4">
-              
+
                     <ProgramStatsCards />
                 </div>
 
@@ -539,7 +539,7 @@ export default function Programs() {
                 </div>
 
 
-              
+
                 <div className="flex flex-col md:flex-row gap-4 md:gap-6 bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100 mt-4">
                     <div className="bg-[#F8FAFC] rounded-lg p-4 shadow border border-blue-100 w-full md:w-1/2 flex flex-col items-center">
                         <div className="flex items-center justify-between w-full mb-4">
@@ -584,7 +584,7 @@ export default function Programs() {
                     </div>
 
                     <div className="flex flex-col items-center justify-center w-full md:w-1/2 space-y-2 pt-4">
-                       
+
 
                         <button
                             className="text-black text-sm font-medium bg-transparent border border-gray-500 px-4 py-2 rounded-lg w-full transition-colors duration-200 hover:bg-gray-50"

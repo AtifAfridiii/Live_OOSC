@@ -77,11 +77,22 @@ const MapController = ({ center, zoom }) => {
   const map = useMapEvents({})
 
   React.useEffect(() => {
+    // Prevent running before map is initialized
+    if (!map || typeof map.getCenter !== 'function' || typeof map.getZoom !== 'function') return;
     if (center && zoom) {
-      map.flyTo(center, zoom, {
-        duration: 1.5,
-        easeLinearity: 0.25
-      })
+      const currentCenter = map.getCenter()
+      const currentZoom = map.getZoom()
+      // Only fly if center/zoom are different
+      if (
+        currentCenter.lat !== center[0] ||
+        currentCenter.lng !== center[1] ||
+        currentZoom !== zoom
+      ) {
+        map.flyTo(center, zoom, {
+          duration: 1.5,
+          easeLinearity: 0.25
+        })
+      }
     }
   }, [center, zoom, map])
 
@@ -100,6 +111,9 @@ const Map = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [mapCenter, setMapCenter] = useState([34.0151, 71.5249]) // Default to Peshawar, Pakistan
   const [mapZoom, setMapZoom] = useState(8)
+
+  // Table filter dropdown state
+  const [tableDistrictFilter, setTableDistrictFilter] = useState('all')
 
   // Toast state
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' })
@@ -232,6 +246,25 @@ const Map = () => {
     setFilteredDistricts(filtered)
   }
 
+  // Table dropdown filter handler
+  const handleTableDistrictFilter = (districtName) => {
+    setTableDistrictFilter(districtName)
+    let filtered = districts
+    if (districtName !== 'all') {
+      filtered = filtered.filter(d => d.district === districtName)
+    }
+    // Also apply search term
+    if (searchTerm && searchTerm.trim()) {
+      filtered = filtered.filter(district =>
+        district.district.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        district.unioncouncil.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        district.tehsil.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        district.programType.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+    setFilteredDistricts(filtered)
+  }
+
   // Handle dropdown district selection
   const handleDropdownDistrictSelect = (districtName) => {
     setSelectedDistrictName(districtName)
@@ -308,7 +341,7 @@ const Map = () => {
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -420,7 +453,7 @@ const Map = () => {
 
         {/* Main Content - Map and Table */}
         {!loading && !error && (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="mb-6 gap-6">
             {/* Map Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
               <div className="flex flex-col gap-4 mb-4">
@@ -485,12 +518,18 @@ const Map = () => {
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                         <span>Total: {selectedDistrict.totalChildren}</span>
                       </div>
+<div className="flex items-center gap-1">
+  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+  <span>
+    Out of School: {
+      selectedDistrict.locations
+        ? selectedDistrict.locations.reduce((sum, d) => sum + (d.outOfSchoolChildren || 0), 0)
+        : selectedDistrict.outOfSchoolChildren
+    }
+  </span>
+</div>
                       <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span>Out of School: {selectedDistrict.totalOutOfSchool}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                         <span>Rate: {selectedDistrict.outOfSchoolRate}%</span>
                       </div>
                     </div>
@@ -535,7 +574,7 @@ const Map = () => {
                         }}
                       >
                       <Popup>
-                        <div className="p-2 min-w-64">
+                        <div className=" p-2 min-w-64">
                           <h3 className="font-semibold text-gray-900 mb-2">
                             {district.district}
                           </h3>
@@ -607,15 +646,17 @@ const Map = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
 
-            {/* Table Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
+         {/* Table Section */}
+        <section>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">District Data</h2>
-                <div className="text-sm text-gray-600">
-                  {filteredDistricts.length} districts
-                </div>
               </div>
+
+          {/* Table  */}
 
               {filteredDistricts.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
@@ -723,8 +764,7 @@ const Map = () => {
                 </div>
               )}
             </div>
-          </div>
-        )}
+            </section>
 
         {/* Toast Component */}
         {toast.show && (
