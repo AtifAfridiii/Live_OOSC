@@ -805,6 +805,29 @@ const DataManagement = () => {
                       placeholder="Tehsil"
                     />
                   </div>
+                     {/* Union Council */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Union Council</label>
+                    <input
+                      type="text"
+                      value={formData.unioncouncil}
+                      onChange={(e) => handleInputChange('unioncouncil', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Union Council"
+                    />
+                  </div>
+
+                  {/* PK */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PK constituency (Provincial Assembly)</label>
+                    <input
+                      type="text"
+                      value={formData.pk}
+                      onChange={(e) => handleInputChange('pk', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Provincial Assembly"
+                    />
+                  </div>
 
          {/* Total Children */}
                    <div>
@@ -844,28 +867,8 @@ const DataManagement = () => {
                       <span className="text-xs text-red-600">Girls % and Boys % combined should be 100%</span>
                     )}
                   </div>
-                       {/* Union Council */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Union Council</label>
-                    <input
-                      type="text"
-                      value={formData.unioncouncil}
-                      onChange={(e) => handleInputChange('unioncouncil', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Union Council"
-                    />
-                  </div>
-                  {/* PK */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PK constituency (Provincial Assembly)</label>
-                    <input
-                      type="text"
-                      value={formData.pk}
-                      onChange={(e) => handleInputChange('pk', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Provincial Assembly"
-                    />
-                  </div>
+
+
 
                   {/* Program Type */}
                   <div>
@@ -903,6 +906,28 @@ const DataManagement = () => {
                       onChange={(e) => handleInputChange('villagecouncil', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
                       placeholder="Village Council"
+                    />
+                  </div>
+                  {/* Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange('date', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg shadow-sm"
+                    />
+                  </div>
+
+                   {/* National */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">NA constituency (National Assembly)</label>
+                    <input
+                      type="text"
+                      value={formData.national}
+                      onChange={(e) => handleInputChange('national', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="National Assembly"
                     />
                   </div>
 
@@ -951,30 +976,6 @@ const DataManagement = () => {
                     {parseInt(formData.boysPercentage) + parseInt(formData.girlsPercentage) < 100 && (
                       <span className="text-xs text-red-600">Girls % and Boys % combined should be 100%</span>
                     )}
-                  </div>
-
-
-                  {/* National */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NA constituency (National Assembly)</label>
-                    <input
-                      type="text"
-                      value={formData.national}
-                      onChange={(e) => handleInputChange('national', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="National Assembly"
-                    />
-                  </div>
-
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange('date', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg shadow-sm"
-                    />
                   </div>
 
                   {/* Location */}
