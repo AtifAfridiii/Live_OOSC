@@ -53,7 +53,10 @@ const DataManagement = () => {
     pk: '',
     national: '',
     location: '',
-    tehsil: ''
+    tehsil: '',
+    age:'',
+    totalTeachers:'',
+    requiredFaculty:''
   })
 
   // Map state
@@ -147,7 +150,10 @@ const DataManagement = () => {
       national: data.national,
       lat: lat,
       log: log,
-      tehsil: data.tehsil
+      tehsil: data.tehsil,
+      age: data.age,
+      totalTeachers: parseInt(data.totalTeachers) || 0,
+      requiredFaculty: parseInt(data.requiredFaculty) || 0
     }
   }
 
@@ -414,7 +420,17 @@ const DataManagement = () => {
       !formData.date ||
       !formData.povertyPercentage ||
       !formData.disabilityPercentage ||
-      !formData.otherPercentage
+      !formData.otherPercentage ||
+      !formData.location||
+      !formData.tehsil||
+      !formData.programType||
+      !formData.pk||
+      !formData.national ||
+      !formData.age ||
+      !formData.totalTeachers ||
+      !formData.requiredFaculty||
+      !formData.girlsPercentage||
+      !formData.boysPercentage
     ) {
       showToast('Please fill in all required fields', 'error')
       return
@@ -528,7 +544,10 @@ const DataManagement = () => {
         pk: entry.pk || '',
         national: entry.national || '',
         location: entry.lat+","+entry.log || '',
-        tehsil: entry.tehsil || ''
+        tehsil: entry.tehsil || '',
+        age: entry.age || '',
+        totalTeachers: entry.totalTeachers || '',
+        requiredFaculty: entry.requiredFaculty || ''
       })
 
       // Parse existing location coordinates and set marker position
@@ -596,7 +615,10 @@ const DataManagement = () => {
       pk: '',
       national: '',
       location: '',
-      tehsil: ''
+      tehsil: '',
+      age: '',
+      totalTeachers: '',
+      requiredFaculty: ''
     })
     setMarkerPosition(null) // Reset map marker
     setShowSuccessMessage(false)
@@ -807,7 +829,7 @@ const DataManagement = () => {
                   </div>
                      {/* Union Council */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Union Council</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Union Council<span className='text-sm text-gray-500'> (Optional)</span></label>
                     <input
                       type="text"
                       value={formData.unioncouncil}
@@ -815,6 +837,7 @@ const DataManagement = () => {
                       className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
                       placeholder="Union Council"
                     />
+
                   </div>
 
                   {/* PK */}
@@ -871,35 +894,68 @@ const DataManagement = () => {
 
 
                   {/* Program Type */}
+                 <div className="relative w-full max-w-md mx-auto">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Program Type</label>
+  <select
+    value={formData.programType}
+    onChange={(e) => handleInputChange('programType', e.target.value)}
+    className="w-full appearance-none px-4 py-3 sm:py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm pr-10"
+  >
+    <option value="Foundation Community School (FCS)">Foundation Community School (FCS)</option>
+    <option value="Accelerated Learning Program (ALP)">Accelerated Learning Program (ALP)</option>
+    <option value="Middle Tech">Middle Tech</option>
+    <option value="New School Initiative (NSI)">New School Initiative (NSI)</option>
+    <option value="Education Support Scheme (ESS)">Education Support Scheme (ESS)</option>
+    <option value="Participatory Online Home-learning Alternative (POHA)">Participatory Online Home-learning Alternative (POHA)</option>
+    <option value="Virtual / Online School">Virtual / Online School</option>
+    <option value="Recognition of Prior Learning (RPL)">Recognition of Prior Learning (RPL)</option>
+    <option value="Adult Literacy Program">Adult Literacy Program</option>
+    <option value="Youth Skills Program">Youth Skills Program</option>
+    <option value="Other">Other</option>
+  </select>
+
+  {/* Custom dropdown arrow */}
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500 mt-5">
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+</div>
+
+                 {/* Total Teachers */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Program Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Teachers</label>
                     <input
-                      type="text"
-                      value={formData.programType}
-                      onChange={(e) => handleInputChange('programType', e.target.value)}
+                      type="number"
+                      value={formData.totalTeachers}
+                      onChange={(e) => handleInputChange('totalTeachers', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="e.g. Accelerated Learning Program"
+                      placeholder="Total number of teachers"
+                      min="0"
                     />
                   </div>
-
                    {/* Age */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">Age</label>
                     <input
                       type="text"
-                      // value={formData.programType}
-                      // onChange={(e) => handleInputChange('age', e.target.value)}
+                      value={formData.age}
+                      onChange={(e) => handleInputChange('age', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
                       placeholder="e.g. 6-9,10-16"
                     />
                   </div>
-
                 </div>
                 {/* Right Column */}
                 <div className="flex flex-col gap-4">
                     {/* Village Council */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Village Council</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Village Council <span className='text-sm text-gray-500'> (Optional)</span></label>
                     <input
                       type="text"
                       value={formData.villagecouncil}
@@ -985,7 +1041,7 @@ const DataManagement = () => {
                       type="text"
                       value={formData.location}
                       onChange={(e) => handleInputChange('location', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm cursor-pointer "
                       placeholder="Add GPS Location"
                       disabled={isEditMode}
                     />
@@ -995,6 +1051,19 @@ const DataManagement = () => {
                       <span className="text-xs text-gray-500">Enter coordinates or select a point on the map below.</span>
                     )}
                   </div>
+                  {/* Required Faculty */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Required Faculty</label>
+                    <input
+                      type="number"
+                      value={formData.requiredFaculty}
+                      onChange={(e) => handleInputChange('requiredFaculty', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Number of required faculty"
+                      min="0"
+                    />
+                  </div>
+
                 </div>
               </div>
                {/* Interactive Map */}
@@ -1216,6 +1285,9 @@ const DataManagement = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tehsil</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NA constituency (National Assembly)</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age Group</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Teachers</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required Faculty</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -1238,6 +1310,9 @@ const DataManagement = () => {
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.tehsil}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.national}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.lat+" , "+entry.log}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.age}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.totalTeachers}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.requiredFaculty}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-3">
                             <button

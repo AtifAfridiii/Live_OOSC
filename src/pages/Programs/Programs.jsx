@@ -175,12 +175,16 @@ export default function Programs() {
             };
         }
 
-        // Calculate total students
-        const totalStudents = filteredEntries.reduce((sum, entry) => {
+        // Calculate total students and out-of-school children
+        const { totalStudents, totalOutOfSchool } = filteredEntries.reduce((acc, entry) => {
             const students = parseInt(entry.totalChildren) || 0;
-            console.log('🔍 [DEBUG] Adding students:', students, 'from entry:', entry.district);
-            return sum + students;
-        }, 0);
+            const outOfSchool = parseInt(entry.outOfSchoolChildren) || 0;
+            console.log('🔍 [DEBUG] Adding students:', students, 'out-of-school:', outOfSchool, 'from entry:', entry.district);
+            return {
+                totalStudents: acc.totalStudents + students,
+                totalOutOfSchool: acc.totalOutOfSchool + outOfSchool
+            };
+        }, { totalStudents: 0, totalOutOfSchool: 0 });
 
         // Calculate average gender percentages
         let totalGirls = 0;
@@ -206,6 +210,7 @@ export default function Programs() {
 
         const statistics = {
             totalStudents,
+            totalOutOfSchool,
             girlsPercentage: avgGirlsPercentage,
             boysPercentage: avgBoysPercentage,
             districts,
@@ -341,7 +346,7 @@ export default function Programs() {
                     iconBg="bg-purple-100"
                   />
                   <StatsCard
-                    title="Data Entries"
+                    title="Out of School"
                     value="-"
                     icon={<GraduationCap className="w-6 h-6 text-orange-600" />}
                     bgColor="bg-orange-300"
@@ -406,8 +411,8 @@ export default function Programs() {
                   iconBg="bg-purple-100"
                 />
                 <StatsCard
-                  title="Data Entries"
-                  value={currentData.statistics.entriesCount || 0}
+                  title="Out of School"
+                  value={(currentData.statistics.totalOutOfSchool || 0).toLocaleString()}
                   icon={<GraduationCap className="w-6 h-6 text-orange-600" />}
                   bgColor="bg-orange-300"
                   iconBg="bg-orange-100"

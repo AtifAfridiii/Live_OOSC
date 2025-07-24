@@ -1,28 +1,15 @@
 import React,{useState,useEffect} from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import axiosInstance from '../utils/axiosInstance';
-import { API_PATHS } from '../utils/apiPaths';
+import { Loader2 } from 'lucide-react'
 
-const ChartsSection = () => {
-  const [DistrictData, setDistrictData] = useState([])
-  const [loading, setLoading] = useState(false)
+const ChartsSection = ({ filteredData = [], loading = false }) => {
+  const [processedData, setProcessedData] = useState([])
 
   useEffect(() => {
-    fetchDistrictData();
-  }, []);
-
-  const fetchDistrictData = async () => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.get(API_PATHS.ENTRIES.GET_ALL_ENTRIES);
-      const data = response.data;
-      setDistrictData(data);
-    } catch (error) {
-      console.error('Error fetching district data:', error);
-    } finally {
-      setLoading(false);
+    if (filteredData && filteredData.length > 0) {
+      setProcessedData(filteredData);
     }
-  };
+  }, [filteredData]);
 
     // Sample data for OOSC Trend Overview
   const trendData = [
@@ -34,11 +21,11 @@ const ChartsSection = () => {
     { year: '2024', value: 4.92 }
   ]
 
-  // Calculate percentages for OOSC By Districts (Donut Chart)
+  // Calculate percentages for OOSC By Districts (Donut Chart) from filtered data
   let totalChildren = 0;
   let totalOutOfSchool = 0;
 
-  DistrictData.forEach(entry => {
+  processedData.forEach(entry => {
     totalChildren += Number(entry.totalChildren) || 0;
     totalOutOfSchool += Number(entry.outOfSchoolChildren) || 0;
   });
@@ -51,6 +38,46 @@ const ChartsSection = () => {
     { name: 'In School', value: Number(inSchoolPercent), color: '#93C5FD' },
     { name: 'Out of School', value: Number(outOfSchoolPercent), color: '#4A90E2' }
   ];
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+        <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100 flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            <span className="text-gray-600">Loading trend data...</span>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100 flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            <span className="text-gray-600">Loading district data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state when no data
+  if (!processedData || processedData.length === 0) {
+    return (
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
+        <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100 flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-500 mb-2">No data available</p>
+            <p className="text-sm text-gray-400">Try adjusting your filters</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100 flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-500 mb-2">No data available</p>
+            <p className="text-sm text-gray-400">Try adjusting your filters</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
