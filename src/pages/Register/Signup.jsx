@@ -4,7 +4,7 @@ import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 import istock from "../../assets/Logo/istock.png"
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
-
+import Toast from '../../components/Toast'
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -18,6 +18,7 @@ const Register = () => {
   const [errors, setErrors] = useState({})
   const navigate = useNavigate()
   const location = useLocation()
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' })
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -92,34 +93,20 @@ const Register = () => {
       // Debug: log API response
       console.log('Register API response:', response)
 
-      // Save user info and token if provided - ensure atomic operation
-      const userData = response.data.user || {
-        email: formData.email,
-        name: formData.name
-      }
-
-      localStorage.setItem('user', JSON.stringify(userData))
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token)
-      }
-      // Set authentication flag last to ensure all data is saved
-      localStorage.setItem('isAuthenticated', 'true')
-
-      // Debug: log localStorage and navigation target
-      console.log('localStorage isAuthenticated:', localStorage.getItem('isAuthenticated'))
-      console.log('localStorage user:', localStorage.getItem('user'))
-      console.log('localStorage token:', localStorage.getItem('token'))
-      const from = location.state?.from?.pathname || '/dashboard'
-      console.log('Redirecting to:', from)
-
+      // Show success toast and redirect to login
+      setToast({ visible: true, message: 'Registration successful! Please login.', type: 'success' })
       setIsLoading(false)
-
-      // Small delay to ensure localStorage is fully written before navigation
       setTimeout(() => {
-        navigate(from, { replace: true })
-      }, 100)
+        setToast({ visible: false, message: '', type: 'success' })
+        navigate('/login', { replace: true })
+      }, 2000)
     } catch (error) {
       setIsLoading(false)
+      setToast({ visible: true, message: 'Registration failed. Please try again.', type: 'error' })
+      setTimeout(() => {
+        setToast({ visible: false, message: '', type: 'error' })
+      }, 3000)
+
       // Debug: log error
       console.log('Register error:', error)
       if (error.response && error.response.data && error.response.data.errors) {
@@ -135,6 +122,14 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2c5aa0] to-[#1e3a8a] flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {toast.visible && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(t => ({ ...t, visible: false }))}
+          />
+        )}
+
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">

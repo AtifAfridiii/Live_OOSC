@@ -778,6 +778,9 @@ const DataManagement = () => {
                       placeholder="12000"
                       min="0"
                     />
+                    {parseInt(formData.totalChildren) < 0 && (
+                      <span className="text-xs text-red-600">Total Children cannot be negative</span>
+                    )}
                   </div>
 
                   {/* Girls % */}
@@ -787,25 +790,19 @@ const DataManagement = () => {
                       type="number"
                       value={formData.girlsPercentage}
                       onChange={(e) => handleInputChange('girlsPercentage', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      className={parseInt(formData.boysPercentage) + parseInt(formData.girlsPercentage) > 100 ? 'w-full px-4 py-2 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-lg placeholder-gray-400 shadow-sm' : "w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"}
                       placeholder="60"
                       min="0"
                       max="100"
                     />
+                    {parseInt(formData.boysPercentage) + parseInt(formData.girlsPercentage) > 100 && (
+                      <span className="text-xs text-red-600">Girls % and Boys % combined should not exceed 100%</span>
+                    )}
+                    { parseInt(formData.girlsPercentage) < 0 && (
+                      <span className="text-xs text-red-600">Girls % should  be positive</span>
+                    )}
                   </div>
-
-                  {/* Program Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Program Type</label>
-                    <input
-                      type="text"
-                      value={formData.programType}
-                      onChange={(e) => handleInputChange('programType', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="e.g. Accelerated Learning Program"
-                    />
-                  </div>
-                  {/* Union Council */}
+                       {/* Union Council */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Union Council</label>
                     <input
@@ -838,6 +835,30 @@ const DataManagement = () => {
                       placeholder="Tehsil"
                     />
                   </div>
+                  {/* Program Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Program Type</label>
+                    <input
+                      type="text"
+                      value={formData.programType}
+                      onChange={(e) => handleInputChange('programType', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="e.g. Accelerated Learning Program"
+                    />
+                  </div>
+
+                   {/* Age */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">Age</label>
+                    <input
+                      type="text"
+                      // value={formData.programType}
+                      // onChange={(e) => handleInputChange('age', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="e.g. 6-9,10-16"
+                    />
+                  </div>
+
                 </div>
                 {/* Right Column */}
                 <div className="flex flex-col gap-4">
@@ -848,10 +869,21 @@ const DataManagement = () => {
                       type="number"
                       value={formData.outOfSchoolChildren}
                       onChange={(e) => handleInputChange('outOfSchoolChildren', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      className={`w-full px-4 py-2 rounded-lg border bg-[#F8F9FA] focus:outline-none text-lg placeholder-gray-400 shadow-sm ${parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren) ? 'border-red-500 focus:ring-2 focus:ring-red-400' : 'border-blue-100 focus:ring-2 focus:ring-blue-200'}`}
                       placeholder="4500"
                       min="0"
+                      ref={input => {
+                        if (input && parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren)) {
+                          input.focus();
+                        }
+                      }}
                     />
+                    {parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren) && (
+                      <span className="text-xs text-red-600">Out-of-School Children cannot be greater than Total Children</span>
+                    )}
+                    {parseInt(formData.outOfSchoolChildren) < 0 && (
+                      <span className="text-xs text-red-600">Out-of-School Children cannot be negative</span>
+                    )}
                   </div>
 
                   {/* Boys % */}
@@ -861,24 +893,20 @@ const DataManagement = () => {
                       type="number"
                       value={formData.boysPercentage}
                       onChange={(e) => handleInputChange('boysPercentage', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                      className={parseInt(formData.boysPercentage) + parseInt(formData.girlsPercentage) > 100 ? 'w-full px-4 py-2 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-lg placeholder-gray-400 shadow-sm' : "w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm" }
                       placeholder="40"
                       min="0"
                       max="100"
                     />
+                    {parseInt(formData.boysPercentage) + parseInt(formData.girlsPercentage) > 100 && (
+                      <span className="text-xs text-red-600">Girls % and Boys % combined should not exceed 100%</span>
+                    )}
+                      {parseInt(formData.boysPercentage) <0 && (
+                      <span className="text-xs text-red-600"> Boys %  should be positive</span>
+                    )}
                   </div>
 
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    <input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange('date', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg shadow-sm"
-                    />
-                  </div>
-                  {/* Village Council */}
+                   {/* Village Council */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Village Council</label>
                     <input
@@ -900,6 +928,18 @@ const DataManagement = () => {
                       placeholder="National Assembly"
                     />
                   </div>
+
+                  {/* Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange('date', e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg shadow-sm"
+                    />
+                  </div>
+
                   {/* Location */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
@@ -959,11 +999,19 @@ const DataManagement = () => {
                     type="number"
                     value={formData.povertyPercentage}
                     onChange={(e) => handleInputChange('povertyPercentage', e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                    className={parseInt(formData.povertyPercentage) + parseInt(formData.disabilityPercentage) + parseInt(formData.otherPercentage) > 100 ? 'w-full px-4 py-2 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-lg placeholder-gray-400 shadow-sm' : "w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"}
                     placeholder="45"
                     min="0"
                     max="100"
                   />
+                  {parseInt(formData.povertyPercentage) + parseInt(formData.disabilityPercentage) + parseInt(formData.otherPercentage) > 100 && (
+                    <span className="text-xs text-red-600">Poverty %, Disability %, and Other % combined should not exceed 100%</span>
+                  )
+                  }
+                  {parseInt(formData.povertyPercentage) <0 && (
+                    <span className="text-xs text-red-600">Poverty % should be positive</span>
+                  )}
+
                 </div>
                 <div className="flex-1 mb-4 md:mb-0">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Disability %</label>
@@ -971,11 +1019,17 @@ const DataManagement = () => {
                     type="number"
                     value={formData.disabilityPercentage}
                     onChange={(e) => handleInputChange('disabilityPercentage', e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                   className={parseInt(formData.povertyPercentage) + parseInt(formData.disabilityPercentage) + parseInt(formData.otherPercentage) > 100 ? 'w-full px-4 py-2 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-lg placeholder-gray-400 shadow-sm' : "w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"}
                     placeholder="15"
                     min="0"
                     max="100"
                   />
+                   {parseInt(formData.povertyPercentage) + parseInt(formData.disabilityPercentage) + parseInt(formData.otherPercentage) > 100 && (
+                    <span className="text-xs text-red-600">Poverty %, Disability %, and Other % combined should not exceed 100%</span>
+                  )}
+                  {parseInt(formData.disabilityPercentage) <0 && (
+                    <span className="text-xs text-red-600">Disability % should be positive</span>
+                  )}
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Other %</label>
@@ -983,11 +1037,17 @@ const DataManagement = () => {
                     type="number"
                     value={formData.otherPercentage}
                     onChange={(e) => handleInputChange('otherPercentage', e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"
+                    className={parseInt(formData.povertyPercentage) + parseInt(formData.disabilityPercentage) + parseInt(formData.otherPercentage) > 100 ? 'w-full px-4 py-2 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-lg placeholder-gray-400 shadow-sm' : "w-full px-4 py-2 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-lg placeholder-gray-400 shadow-sm"}
                     placeholder="25"
                     min="0"
                     max="100"
                   />
+                   {parseInt(formData.povertyPercentage) + parseInt(formData.disabilityPercentage) + parseInt(formData.otherPercentage) > 100 && (
+                    <span className="text-xs text-red-600">Poverty %, Disability %, and Other % combined should not exceed 100%</span>
+                  )}
+                  {parseInt(formData.otherPercentage) <0 && (
+                    <span className="text-xs text-red-600">Other % should be positive</span>
+                  )}
                 </div>
               </div>
 
