@@ -9,6 +9,7 @@ import DistrictsPage from '../Districts/Districts'
 import Reports from '../Reports/Reports'
 import Users from '../Users/Users'
 import Map from '../Map/Map'
+import Calculator from '../Calculator/Calculator'
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -47,6 +48,7 @@ const Dashboard = () => {
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<Users />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/calculator" element={<Calculator />} />
           </Routes>
         </div>
       </div>

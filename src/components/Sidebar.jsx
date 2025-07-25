@@ -8,7 +8,8 @@ import {
   Map,
   FileText,
   LogOut,
-  X
+  X,
+  Calculator
 } from 'lucide-react'
 import istock from "../assets/Logo/istock.png"
 
@@ -24,6 +25,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate }) => {
     { icon: Map, label: 'Map', path: '/dashboard/map' },
     { icon: FileText, label: 'Reports', path: '/dashboard/reports' },
     { icon: Users, label: 'Users', path: '/dashboard/users' },
+    { icon: Calculator, label: 'Calculator', path: '/dashboard/calculator' },
   ]
 
   const handleLogout = () => {
