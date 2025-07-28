@@ -28,7 +28,7 @@ const MainContent = () => {
   const [filterOptions, setFilterOptions] = useState({
     districts: ['All'],
     genders: ['All', 'Boys', 'Girls'],
-    ageGroups: ['All', '5-9', '9-16']
+    ageGroups: ['All']
   })
 
   // Dropdown visibility state
@@ -60,12 +60,44 @@ const MainContent = () => {
   const fetchFilterOptions = useCallback(async () => {
     try {
       const data = await fetchAllEntries();
-      
-      // Extract unique districts, genders, and age groups from data
+
+      // Extract unique districts, genders, and age values from data
       const districts = ['All', ...new Set(data.map(entry => entry.district).filter(Boolean))];
       const genders = ['All', 'Boys', 'Girls'];
-      const ageGroups = ['All', ...new Set(data.map(entry => entry.ageGroup).filter(Boolean))];
-      
+
+      // Extract individual age values from the age field
+      const ageSet = new Set();
+      data.forEach(entry => {
+        if (entry.age) {
+          // Parse age field which might contain ranges like "6-9,10-16" or individual ages
+          const ageString = entry.age.toString();
+          // Split by comma to handle multiple age ranges/values
+          const ageParts = ageString.split(',').map(part => part.trim());
+
+          ageParts.forEach(part => {
+            // Check if it's a range (contains hyphen)
+            if (part.includes('-')) {
+              const [start, end] = part.split('-').map(num => parseInt(num.trim()));
+              if (!isNaN(start) && !isNaN(end)) {
+                // Add all individual ages in the range
+                for (let age = start; age <= end; age++) {
+                  ageSet.add(age);
+                }
+              }
+            } else {
+              // Single age value
+              const age = parseInt(part);
+              if (!isNaN(age)) {
+                ageSet.add(age);
+              }
+            }
+          });
+        }
+      });
+
+      // Convert to sorted array of age values
+      const ageGroups = ['All', ...Array.from(ageSet).sort((a, b) => a - b)];
+
       setFilterOptions({
         districts,
         genders,
@@ -83,23 +115,51 @@ const MainContent = () => {
       if (currentFilters.district !== 'All' && entry.district !== currentFilters.district) {
         return false;
       }
-      
-      // Age group filter
-      if (currentFilters.ageGroup !== 'All' && entry.ageGroup !== currentFilters.ageGroup) {
-        return false;
+
+      // Age filter - check if the selected age is present in the entry's age field
+      if (currentFilters.ageGroup !== 'All') {
+        const selectedAge = parseInt(currentFilters.ageGroup);
+        if (!isNaN(selectedAge) && entry.age) {
+          const ageString = entry.age.toString();
+          const ageParts = ageString.split(',').map(part => part.trim());
+
+          let ageMatches = false;
+          ageParts.forEach(part => {
+            // Check if it's a range (contains hyphen)
+            if (part.includes('-')) {
+              const [start, end] = part.split('-').map(num => parseInt(num.trim()));
+              if (!isNaN(start) && !isNaN(end)) {
+                // Check if selected age is within the range
+                if (selectedAge >= start && selectedAge <= end) {
+                  ageMatches = true;
+                }
+              }
+            } else {
+              // Single age value
+              const age = parseInt(part);
+              if (!isNaN(age) && age === selectedAge) {
+                ageMatches = true;
+              }
+            }
+          });
+
+          if (!ageMatches) {
+            return false;
+          }
+        }
       }
-      
+
       // Date range filter
       if (currentFilters.startDate && currentFilters.endDate) {
         const entryDate = new Date(entry.createdAt || entry.date);
         const startDate = new Date(currentFilters.startDate);
         const endDate = new Date(currentFilters.endDate);
-        
+
         if (entryDate < startDate || entryDate > endDate) {
           return false;
         }
       }
-      
+
       return true;
     });
   }, []);
@@ -240,12 +300,12 @@ const MainContent = () => {
   const fetchAndProcessData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const allData = await fetchAllEntries();
       const filtered = applyFilters(allData, filters);
       const statsData = calculateStats(filtered, filters.gender);
-      
+
       setFilteredData(filtered);
       setStats(statsData);
     } catch (error) {
@@ -291,7 +351,7 @@ const MainContent = () => {
       ...prev,
       [filterType]: value
     }));
-    
+
     // Close the dropdown after selection
     setDropdownStates(prev => ({
       ...prev,
@@ -453,8 +513,8 @@ const MainContent = () => {
                 className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
               >
                 <span className="truncate">
-                  {filters.startDate && filters.endDate 
-                    ? `${filters.startDate} - ${filters.endDate}` 
+                  {filters.startDate && filters.endDate
+                    ? `${filters.startDate} - ${filters.endDate}`
                     : 'Date Range'
                   }
                 </span>

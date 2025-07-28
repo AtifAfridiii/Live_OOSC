@@ -447,7 +447,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       showToast('Please fill in all required fields', 'error')
       return
     }
-
+ // Validation: Out of School Children <= Total Children
     const totalChildren = parseInt(formData.totalChildren) || 0;
     const outOfSchoolChildren = parseInt(formData.outOfSchoolChildren) || 0;
     if (outOfSchoolChildren > totalChildren) {
@@ -508,6 +508,17 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
     }
     if (poverty + disability + other === 0) {
       showToast('Poverty %, Disability %, and Other % combined should not be 0%', 'error');
+      return;
+    }
+   // Validation: Total Teachers >= 0
+    if(formData.totalTeachers < 0){
+      showToast('Total Teachers should not be negative', 'error');
+      return;
+    }
+
+    // Validation: Age >= 0
+    if(formData.age < 0){
+      showToast('Age should not be negative', 'error');
       return;
     }
 
@@ -842,9 +853,9 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
               </div>
 
               {/* Responsive Grid Layout */}
-              <div className="grid grid-cols-1 sm:grid-cols-1  md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid sm:grid-cols-1  md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* First Column */}
-                <div className="flex flex-col gap-4  sm:gap-6">
+
                   {/* Tehsil */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Tehsil</label>
@@ -856,20 +867,131 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                       placeholder="Tehsil"
                     />
                   </div>
+             {/* Union Council */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Union Council <span className='text-xs sm:text-sm text-gray-500'>(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.unioncouncil}
+                      onChange={(e) => handleInputChange('unioncouncil', e.target.value)}
+                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Union Council"
+                    />
+                  </div>
 
-                  {/* Total Teachers */}
+                    {/* Village Council */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Village Council <span className='text-xs sm:text-sm text-gray-500'>(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.villagecouncil}
+                      onChange={(e) => handleInputChange('villagecouncil', e.target.value)}
+                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Village Council"
+                    />
+                  </div>
+
+                   {/* Total Teachers */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Total Teachers</label>
                     <input
                       type="number"
                       value={formData.totalTeachers}
                       onChange={(e) => handleInputChange('totalTeachers', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
+                      className= { parseInt(formData.totalTeachers) < 0 ? "w-full px-4 py-2 sm:py-3 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-base sm:text-lg placeholder-gray-400 shadow-sm" :"w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"}
                       placeholder="Total number of teachers"
                       min="0"
                     />
+                    {parseInt(formData.totalTeachers) < 0 && (
+                      <span className="text-xs text-red-600 mt-1 block">Total Teachers cannot be negative</span>
+                    )}
+
                   </div>
-   {/* Program Type */}
+
+                  {/* Total Children */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Total Children</label>
+                    <input
+                      type="number"
+                      value={formData.totalChildren}
+                      onChange={(e) => handleInputChange('totalChildren', e.target.value)}
+                      className={`w-full px-4 py-2 sm:py-3 rounded-lg border bg-[#F8F9FA] focus:outline-none text-base sm:text-lg placeholder-gray-400 shadow-sm ${
+                        parseInt(formData.totalChildren) < 0
+                          ? 'border-red-500 focus:ring-2 focus:ring-red-400'
+                          : 'border-blue-100 focus:ring-2 focus:ring-blue-200'
+                      }`}
+                      placeholder="12000"
+                      min="0"
+                    />
+                    {parseInt(formData.totalChildren) < 0 && (
+                      <span className="text-xs text-red-600 mt-1 block">Total Children cannot be negative</span>
+                    )}
+                  </div>
+
+
+ {/* Out-of-School Children */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Out-of-School Children</label>
+                    <input
+                      type="number"
+                      value={formData.outOfSchoolChildren}
+                      onChange={(e) => handleInputChange('outOfSchoolChildren', e.target.value)}
+                      className={`w-full px-4 py-2 sm:py-3 rounded-lg border bg-[#F8F9FA] focus:outline-none text-base sm:text-lg placeholder-gray-400 shadow-sm ${
+                        parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren) ||
+                        parseInt(formData.outOfSchoolChildren) < 0
+                          ? 'border-red-500 focus:ring-2 focus:ring-red-400'
+                          : 'border-blue-100 focus:ring-2 focus:ring-blue-200'
+                      }`}
+                      placeholder="4500"
+                      min="0"
+                      ref={input => {
+                        if (input && parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren)) {
+                          input.focus();
+                        }
+                      }}
+                    />
+                    {parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren) && (
+                      <span className="text-xs text-red-600 mt-1 block">Out-of-School Children cannot be greater than Total Children</span>
+                    )}
+                    {parseInt(formData.outOfSchoolChildren) < 0 && (
+                      <span className="text-xs text-red-600 mt-1 block">Out-of-School Children cannot be negative</span>
+                    )}
+                  </div>
+
+                   {/* PK */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">PK constituency</label>
+                    <input
+                      type="text"
+                      value={formData.pk}
+                      onChange={(e) => handleInputChange('pk', e.target.value)}
+                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Provincial Assembly"
+                    />
+                  </div>
+
+
+
+                {/* Third Column */}
+
+                  {/* National */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">NA constituency</label>
+                    <input
+                      type="text"
+                      value={formData.national}
+                      onChange={(e) => handleInputChange('national', e.target.value)}
+                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="National Assembly"
+                    />
+                  </div>
+
+
+                 {/* Program Type */}
                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Program Type</label>
                     {formData.programType === 'Other' ? (
@@ -922,93 +1044,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                     )}
                   </div>
 
-
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                    <input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleInputChange('date', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg shadow-sm"
-                    />
-                  </div>
-
-                  {/* Age */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
-                    <input
-                      type="text"
-                      value={formData.age}
-                      onChange={(e) => handleInputChange('age', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="e.g. 6-9,10-16"
-                    />
-                  </div>
-                </div>
-
-                {/* Second Column */}
-                <div className="flex flex-col gap-4 sm:gap-6">
-                  {/* Village Council */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Village Council <span className='text-xs sm:text-sm text-gray-500'>(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.villagecouncil}
-                      onChange={(e) => handleInputChange('villagecouncil', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Village Council"
-                    />
-                  </div>
-
-                  {/* Required Faculty */}
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 hidden">Required Faculty</label>
-                    <input
-                      type="number"
-                      value={formData.requiredFaculty}
-                      onChange={(e) => handleInputChange('requiredFaculty', e.target.value)}
-                      className=" hidden w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Number of required faculty"
-                      min="0"
-                    />
-                  </div> */}
-
-     {/* Total Children */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Total Children</label>
-                    <input
-                      type="number"
-                      value={formData.totalChildren}
-                      onChange={(e) => handleInputChange('totalChildren', e.target.value)}
-                      className={`w-full px-4 py-2 sm:py-3 rounded-lg border bg-[#F8F9FA] focus:outline-none text-base sm:text-lg placeholder-gray-400 shadow-sm ${
-                        parseInt(formData.totalChildren) < 0
-                          ? 'border-red-500 focus:ring-2 focus:ring-red-400'
-                          : 'border-blue-100 focus:ring-2 focus:ring-blue-200'
-                      }`}
-                      placeholder="12000"
-                      min="0"
-                    />
-                    {parseInt(formData.totalChildren) < 0 && (
-                      <span className="text-xs text-red-600 mt-1 block">Total Children cannot be negative</span>
-                    )}
-                  </div>
-
-                   {/* PK */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">PK constituency</label>
-                    <input
-                      type="text"
-                      value={formData.pk}
-                      onChange={(e) => handleInputChange('pk', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Provincial Assembly"
-                    />
-                  </div>
-
-                {/* Boys % */}
+                 {/* Boys % */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Boys %</label>
                     <input
@@ -1037,67 +1073,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                     )}
                   </div>
 
-
-                </div>
-
-                {/* Third Column */}
-                <div className="flex flex-col gap-4 sm:gap-6">
-                  {/* Union Council */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Union Council <span className='text-xs sm:text-sm text-gray-500'>(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.unioncouncil}
-                      onChange={(e) => handleInputChange('unioncouncil', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Union Council"
-                    />
-                  </div>
-
-                  {/* Out-of-School Children */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Out-of-School Children</label>
-                    <input
-                      type="number"
-                      value={formData.outOfSchoolChildren}
-                      onChange={(e) => handleInputChange('outOfSchoolChildren', e.target.value)}
-                      className={`w-full px-4 py-2 sm:py-3 rounded-lg border bg-[#F8F9FA] focus:outline-none text-base sm:text-lg placeholder-gray-400 shadow-sm ${
-                        parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren) ||
-                        parseInt(formData.outOfSchoolChildren) < 0
-                          ? 'border-red-500 focus:ring-2 focus:ring-red-400'
-                          : 'border-blue-100 focus:ring-2 focus:ring-blue-200'
-                      }`}
-                      placeholder="4500"
-                      min="0"
-                      ref={input => {
-                        if (input && parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren)) {
-                          input.focus();
-                        }
-                      }}
-                    />
-                    {parseInt(formData.outOfSchoolChildren) > parseInt(formData.totalChildren) && (
-                      <span className="text-xs text-red-600 mt-1 block">Out-of-School Children cannot be greater than Total Children</span>
-                    )}
-                    {parseInt(formData.outOfSchoolChildren) < 0 && (
-                      <span className="text-xs text-red-600 mt-1 block">Out-of-School Children cannot be negative</span>
-                    )}
-                  </div>
-
-                  {/* National */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">NA constituency</label>
-                    <input
-                      type="text"
-                      value={formData.national}
-                      onChange={(e) => handleInputChange('national', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="National Assembly"
-                    />
-                  </div>
-
-                  {/* Girls % */}
+                   {/* Girls % */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Girls %</label>
                     <input
@@ -1125,7 +1101,47 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                       <span className="text-xs text-red-600 mt-1 block">Girls % and Boys % combined should be 100%</span>
                     )}
                   </div>
-                </div>
+
+                  {/* Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange('date', e.target.value)}
+                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg shadow-sm"
+                    />
+                  </div>
+
+                  {/* Age */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                    <input
+                      type="text"
+                      value={formData.age}
+                      onChange={(e) => handleInputChange('age', e.target.value)}
+                      className= {parseInt(formData.age)<0 ? "w-full px-4 py-2 sm:py-3 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-base sm:text-lg placeholder-gray-400 shadow-sm" : "w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"}
+                      placeholder="e.g. 5-9, 10-16"
+                    />
+                    {parseInt(formData.age)<0 && (
+                      <span className="text-xs text-red-600 mt-1 block">Age should be positive</span>
+                    )}
+
+                  </div>
+
+                  {/* Required Faculty */}
+                  {/* <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 hidden">Required Faculty</label>
+                    <input
+                      type="number"
+                      value={formData.requiredFaculty}
+                      onChange={(e) => handleInputChange('requiredFaculty', e.target.value)}
+                      className=" hidden w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
+                      placeholder="Number of required faculty"
+                      min="0"
+                    />
+                  </div> */}
+
               </div>
 
               {/* Barriers Section - Responsive Grid */}
