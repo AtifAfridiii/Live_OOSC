@@ -26,12 +26,58 @@ const defaultIcon = new L.Icon({
   shadowSize: [41, 41]
 })
 
-const selectedIcon = new L.Icon({
+// School icon (blue with graduation cap symbol)
+const schoolIcon = new L.Icon({
   iconUrl: 'data:image/svg+xml;base64,' + btoa(`
     <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 12.5 12.5 28.5 12.5 28.5s12.5-16 12.5-28.5C25 5.6 19.4 0 12.5 0z" fill="#ef4444"/>
-      <circle cx="12.5" cy="12.5" r="6" fill="white"/>
-      <circle cx="12.5" cy="12.5" r="3" fill="#ef4444"/>
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 12.5 12.5 28.5 12.5 28.5s12.5-16 12.5-28.5C25 5.6 19.4 0 12.5 0z" fill="#2563eb"/>
+      <circle cx="12.5" cy="12.5" r="8" fill="white"/>
+      <!-- Graduation cap -->
+      <path d="M6 11.5L12.5 8.5L19 11.5L12.5 14.5L6 11.5Z" fill="#2563eb"/>
+      <rect x="11.5" y="11.5" width="2" height="4" fill="#2563eb"/>
+      <path d="M18 12v3c0 1-2.5 2-5.5 2s-5.5-1-5.5-2v-3" stroke="#2563eb" stroke-width="0.8" fill="none"/>
+    </svg>
+  `),
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  shadowSize: [41, 41]
+})
+
+// Madrasa icon (green with mosque dome and minaret)
+const madrasaIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 12.5 12.5 28.5 12.5 28.5s12.5-16 12.5-28.5C25 5.6 19.4 0 12.5 0z" fill="#16a34a"/>
+      <circle cx="12.5" cy="12.5" r="8" fill="white"/>
+      <!-- Mosque dome -->
+      <path d="M12.5 7.5C10.5 7.5 9 9 9 11v6h7v-6C16 9 14.5 7.5 12.5 7.5Z" fill="#16a34a"/>
+      <ellipse cx="12.5" cy="11" rx="3.5" ry="2" fill="#16a34a"/>
+      <!-- Minaret -->
+      <rect x="17" y="8" width="1" height="6" fill="#16a34a"/>
+      <circle cx="17.5" cy="7.5" r="0.8" fill="#16a34a"/>
+      <!-- Crescent -->
+      <path d="M12.5 6.5C12.8 6.2 13.2 6.2 13.5 6.5C13.2 6.8 12.8 6.8 12.5 6.5Z" fill="#16a34a"/>
+    </svg>
+  `),
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  shadowSize: [41, 41]
+})
+
+// Selected school icon (larger, red background)
+const selectedSchoolIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="30" height="48" viewBox="0 0 30 48" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 0C6.7 0 0 6.7 0 15c0 15 15 33 15 33s15-18 15-33C30 6.7 23.3 0 15 0z" fill="#ef4444"/>
+      <circle cx="15" cy="15" r="10" fill="white"/>
+      <!-- Graduation cap -->
+      <path d="M7 14L15 10L23 14L15 18L7 14Z" fill="#ef4444"/>
+      <rect x="14" y="14" width="2" height="5" fill="#ef4444"/>
+      <path d="M22 15v4c0 1.2-3 2.4-7 2.4s-7-1.2-7-2.4v-4" stroke="#ef4444" stroke-width="1" fill="none"/>
     </svg>
   `),
   iconSize: [30, 48],
@@ -41,12 +87,63 @@ const selectedIcon = new L.Icon({
   shadowSize: [48, 48]
 })
 
-const dimmedIcon = new L.Icon({
+// Selected madrasa icon (larger, red background)
+const selectedMadrasaIcon = new L.Icon({
   iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-    <svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 12.5 12.5 28.5 12.5 28.5s12.5-16 12.5-28.5C25 5.6 19.4 0 12.5 0z" fill="#9ca3af" opacity="0.6"/>
-      <circle cx="12.5" cy="12.5" r="6" fill="white" opacity="0.8"/>
-      <circle cx="12.5" cy="12.5" r="3" fill="#9ca3af" opacity="0.6"/>
+    <svg width="30" height="48" viewBox="0 0 30 48" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 0C6.7 0 0 6.7 0 15c0 15 15 33 15 33s15-18 15-33C30 6.7 23.3 0 15 0z" fill="#ef4444"/>
+      <circle cx="15" cy="15" r="10" fill="white"/>
+      <!-- Mosque dome -->
+      <path d="M15 9C12.5 9 10.5 11 10.5 13.5v7.5h9v-7.5C19.5 11 17.5 9 15 9Z" fill="#ef4444"/>
+      <ellipse cx="15" cy="13.5" rx="4.5" ry="2.5" fill="#ef4444"/>
+      <!-- Minaret -->
+      <rect x="21" y="10" width="1.2" height="7" fill="#ef4444"/>
+      <circle cx="21.6" cy="9" r="1" fill="#ef4444"/>
+      <!-- Crescent -->
+      <path d="M15 7.5C15.4 7.1 15.9 7.1 16.3 7.5C15.9 7.9 15.4 7.9 15 7.5Z" fill="#ef4444"/>
+    </svg>
+  `),
+  iconSize: [30, 48],
+  iconAnchor: [15, 48],
+  popupAnchor: [1, -40],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  shadowSize: [48, 48]
+})
+
+// Dimmed school icon
+const dimmedSchoolIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="20" height="33" viewBox="0 0 20 33" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 0C4.5 0 0 4.5 0 10c0 10 10 23 10 23s10-13 10-23C20 4.5 15.5 0 10 0z" fill="#9ca3af" opacity="0.6"/>
+      <circle cx="10" cy="10" r="6.5" fill="white" opacity="0.8"/>
+      <!-- Graduation cap -->
+      <path d="M5 9.5L10 7L15 9.5L10 12L5 9.5Z" fill="#9ca3af" opacity="0.6"/>
+      <rect x="9.2" y="9.5" width="1.6" height="3.2" fill="#9ca3af" opacity="0.6"/>
+      <path d="M14 10.5v2.5c0 0.8-2 1.6-4 1.6s-4-0.8-4-1.6v-2.5" stroke="#9ca3af" stroke-width="0.6" fill="none" opacity="0.6"/>
+    </svg>
+  `),
+  iconSize: [20, 33],
+  iconAnchor: [10, 33],
+  popupAnchor: [1, -28],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  shadowSize: [33, 33],
+  shadowAnchor: [10, 33]
+})
+
+// Dimmed madrasa icon
+const dimmedMadrasaIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="20" height="33" viewBox="0 0 20 33" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 0C4.5 0 0 4.5 0 10c0 10 10 23 10 23s10-13 10-23C20 4.5 15.5 0 10 0z" fill="#9ca3af" opacity="0.6"/>
+      <circle cx="10" cy="10" r="6.5" fill="white" opacity="0.8"/>
+      <!-- Mosque dome -->
+      <path d="M10 6.5C8.2 6.5 6.8 7.9 6.8 9.7v5h6.4v-5C13.2 7.9 11.8 6.5 10 6.5Z" fill="#9ca3af" opacity="0.6"/>
+      <ellipse cx="10" cy="9.7" rx="3.2" ry="1.6" fill="#9ca3af" opacity="0.6"/>
+      <!-- Minaret -->
+      <rect x="14.5" y="7.5" width="0.8" height="4.5" fill="#9ca3af" opacity="0.6"/>
+      <circle cx="14.9" cy="6.8" r="0.6" fill="#9ca3af" opacity="0.6"/>
+      <!-- Crescent -->
+      <path d="M10 5.8C10.3 5.5 10.6 5.5 10.9 5.8C10.6 6.1 10.3 6.1 10 5.8Z" fill="#9ca3af" opacity="0.6"/>
     </svg>
   `),
   iconSize: [20, 33],
@@ -97,6 +194,24 @@ const MapController = ({ center, zoom }) => {
   }, [center, zoom, map])
 
   return null
+}
+
+// Function to get the appropriate icon based on school type and selection state
+const getMarkerIcon = (district, selectedDistrictName) => {
+  const schoolType = district.schoolType || 'School'
+  const isSelected = selectedDistrictName !== 'all' && district.district === selectedDistrictName
+  const isDimmed = selectedDistrictName !== 'all' && district.district !== selectedDistrictName
+
+  if (isDimmed) {
+    // Return dimmed icons based on school type
+    return schoolType === 'Madrasa' ? dimmedMadrasaIcon : dimmedSchoolIcon
+  } else if (isSelected) {
+    // Return selected icons based on school type
+    return schoolType === 'Madrasa' ? selectedMadrasaIcon : selectedSchoolIcon
+  } else {
+    // Return normal icons based on school type
+    return schoolType === 'Madrasa' ? madrasaIcon : schoolIcon
+  }
 }
 
 const Map = () => {
@@ -170,7 +285,8 @@ const Map = () => {
           villagecouncil: entry.villagecouncil || 'N/A',
           tehsil: entry.tehsil || 'N/A',
           pk: entry.pk || 'N/A',
-          national: entry.national || 'N/A'
+          national: entry.national || 'N/A',
+          schoolType: entry.schoolType || 'School' // Default to 'School' if not specified
         }))
 
       setDistricts(validDistricts)
@@ -554,15 +670,8 @@ const Map = () => {
                   />
                   <MapController center={mapCenter} zoom={mapZoom} />
                   {filteredDistricts.map((district) => {
-                    // Determine marker icon based on selection state
-                    let markerIcon = defaultIcon
-                    if (selectedDistrictName !== 'all') {
-                      if (district.district === selectedDistrictName) {
-                        markerIcon = selectedIcon
-                      } else {
-                        markerIcon = dimmedIcon
-                      }
-                    }
+                    // Get the appropriate icon based on school type and selection state
+                    const markerIcon = getMarkerIcon(district, selectedDistrictName)
 
                     return (
                       <Marker
@@ -583,6 +692,12 @@ const Map = () => {
                               <span className="text-gray-600">Coordinates:</span>
                               <span className="font-mono text-blue-600">
                                 {district.coordinatesText}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Type:</span>
+                              <span className={`font-medium ${district.schoolType === 'Madrasa' ? 'text-green-600' : 'text-blue-600'}`}>
+                                {district.schoolType || 'School'}
                               </span>
                             </div>
                             <div className="flex justify-between">
@@ -631,6 +746,12 @@ const Map = () => {
                       <span className="ml-1 font-mono">{selectedDistrict.coordinatesText}</span>
                     </div>
                     <div>
+                      <span className="text-blue-700">Type:</span>
+                      <span className={`ml-1 font-medium ${selectedDistrict.schoolType === 'Madrasa' ? 'text-green-700' : 'text-blue-700'}`}>
+                        {selectedDistrict.schoolType || 'School'}
+                      </span>
+                    </div>
+                    <div>
                       <span className="text-blue-700">Total Children:</span>
                       <span className="ml-1">{selectedDistrict.totalChildren}</span>
                     </div>
@@ -675,6 +796,9 @@ const Map = () => {
                           District
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Coordinates
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -709,6 +833,15 @@ const Map = () => {
                                 {district.tehsil} • {district.unioncouncil}
                               </div>
                             </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              district.schoolType === 'Madrasa'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {district.schoolType || 'School'}
+                            </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <div className="text-sm font-mono text-blue-600">

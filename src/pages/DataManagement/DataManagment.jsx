@@ -57,22 +57,191 @@ const DataManagement = () => {
     age:'',
     totalTeachers:'',
     requiredFaculty:'',
-    customProgramType: ''
+    customProgramType: '',
+    schoolType: ''
   })
 
   // Map state
   const [mapPosition, setMapPosition] = useState([34.0151, 71.5249]) // Default to Peshawar, Pakistan
+  const [mapZoom, setMapZoom] = useState(8)
   const [markerPosition, setMarkerPosition] = useState(null)
+
+  // Location search state
+  const [locationSearchResults, setLocationSearchResults] = useState([])
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+  const [locationSearchFeedback, setLocationSearchFeedback] = useState('')
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false)
 
 const handleInputChange = (field, value) => {
     if (field === 'programType' && value === 'Other') {
       setFormData(prev => ({...prev, customProgramType: ''}));
     }
+
+    // Handle location search functionality
+    if (field === 'location') {
+      handleLocationSearch(value);
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
   }
+
+  // Geographical location search functionality using Nominatim (OpenStreetMap)
+  const handleLocationSearch = async (searchValue) => {
+    if (!searchValue || searchValue.trim() === '') {
+      setLocationSearchResults([]);
+      setShowLocationSuggestions(false);
+      setLocationSearchFeedback('');
+      setIsSearchingLocation(false);
+      return;
+    }
+
+    // Check if the input looks like coordinates (lat, lng format)
+    const coordinatePattern = /^-?\d+\.?\d*\s*,\s*-?\d+\.?\d*$/;
+    if (coordinatePattern.test(searchValue.trim())) {
+      // Handle coordinate input - don't search, just validate and update map
+      const locationParts = searchValue.split(',');
+      if (locationParts.length === 2) {
+        const lat = parseFloat(locationParts[0].trim());
+        const lng = parseFloat(locationParts[1].trim());
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          setMarkerPosition([lat, lng]);
+          setMapPosition([lat, lng]);
+          setMapZoom(14);
+          setLocationSearchFeedback('Coordinates entered manually');
+          setTimeout(() => setLocationSearchFeedback(''), 3000);
+        }
+      }
+      setLocationSearchResults([]);
+      setShowLocationSuggestions(false);
+      setIsSearchingLocation(false);
+      return;
+    }
+
+    // If it's a location name, search using Nominatim geocoding service
+    const searchTerm = searchValue.trim();
+    if (searchTerm.length < 2) {
+      setLocationSearchResults([]);
+      setShowLocationSuggestions(false);
+      setLocationSearchFeedback('');
+      setIsSearchingLocation(false);
+      return;
+    }
+
+    setIsSearchingLocation(true);
+    setLocationSearchFeedback('Searching for location...');
+
+    try {
+      // Use Nominatim geocoding service (OpenStreetMap)
+      // Focus search on Pakistan region for better results
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+        `q=${encodeURIComponent(searchTerm)}&` +
+        `countrycodes=pk&` + // Focus on Pakistan
+        `format=json&` +
+        `limit=5&` +
+        `addressdetails=1&` +
+        `extratags=1`
+      );
+
+      if (!response.ok) {
+        throw new Error('Geocoding service unavailable');
+      }
+
+      const results = await response.json();
+
+      if (results && results.length > 0) {
+        // Transform results for our UI
+        const transformedResults = results.map((result, index) => ({
+          id: `geocode-${index}`,
+          display_name: result.display_name,
+          name: result.name || result.display_name.split(',')[0],
+          lat: parseFloat(result.lat),
+          lng: parseFloat(result.lon),
+          type: result.type,
+          importance: result.importance || 0,
+          address: result.address || {}
+        }));
+
+        setLocationSearchResults(transformedResults);
+        setShowLocationSuggestions(true);
+        setLocationSearchFeedback(`Found ${transformedResults.length} location${transformedResults.length > 1 ? 's' : ''}`);
+      } else {
+        setLocationSearchResults([]);
+        setShowLocationSuggestions(false);
+        setLocationSearchFeedback('No locations found. Try a different search term.');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      setLocationSearchResults([]);
+      setShowLocationSuggestions(false);
+      setLocationSearchFeedback('Location search unavailable. Please enter coordinates manually.');
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
+
+  // Handle location selection from geocoding search results
+  const handleLocationSelect = (selectedLocation) => {
+    if (selectedLocation.lat && selectedLocation.lng) {
+      const lat = selectedLocation.lat;
+      const lng = selectedLocation.lng;
+
+      // Update marker position
+      setMarkerPosition([lat, lng]);
+
+      // Update location field with coordinates
+      const locationString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      setFormData(prev => ({
+        ...prev,
+        location: locationString
+      }));
+
+      // Animate map to the selected location
+      setMapPosition([lat, lng]);
+      setMapZoom(14); // Zoom in to show the location clearly
+
+      // Hide suggestions and show success feedback
+      setShowLocationSuggestions(false);
+      setLocationSearchFeedback(`Location found: ${selectedLocation.name}`);
+
+      // Clear feedback after 3 seconds
+      setTimeout(() => {
+        setLocationSearchFeedback('');
+      }, 3000);
+
+      showToast(`Map centered on ${selectedLocation.name}`, 'success');
+    }
+  };
+
+  // Map controller for smooth transitions
+  const MapController = ({ center, zoom }) => {
+    const map = useMapEvents({});
+
+    React.useEffect(() => {
+      // Prevent running before map is initialized
+      if (!map || typeof map.getCenter !== 'function' || typeof map.getZoom !== 'function') return;
+      if (center && zoom) {
+        const currentCenter = map.getCenter();
+        const currentZoom = map.getZoom();
+        // Only fly if center/zoom are different
+        if (
+          Math.abs(currentCenter.lat - center[0]) > 0.0001 ||
+          Math.abs(currentCenter.lng - center[1]) > 0.0001 ||
+          Math.abs(currentZoom - zoom) > 0.1
+        ) {
+          map.flyTo(center, zoom, {
+            duration: 1.5,
+            easeLinearity: 0.25
+          });
+        }
+      }
+    }, [center, zoom, map]);
+
+    return null;
+  };
 
   // Map click handler component
   const MapClickHandler = () => {
@@ -82,7 +251,13 @@ const handleInputChange = (field, value) => {
         setMarkerPosition([lat, lng])
         // Format coordinates and update location field
         const locationString = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-        handleInputChange('location', locationString)
+        setFormData(prev => ({
+          ...prev,
+          location: locationString
+        }))
+        // Clear search feedback when manually clicking
+        setLocationSearchFeedback('');
+        setShowLocationSuggestions(false);
       }
     })
     return null
@@ -95,7 +270,7 @@ const handleInputChange = (field, value) => {
         <div className="w-full h-64 border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
           <MapContainer
             center={mapPosition}
-            zoom={8}
+            zoom={mapZoom}
             style={{ height: '100%', width: '100%' }}
             className="z-0"
           >
@@ -103,6 +278,7 @@ const handleInputChange = (field, value) => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
+            <MapController center={mapPosition} zoom={mapZoom} />
             <MapClickHandler />
             {markerPosition && (
               <Marker position={markerPosition} />
@@ -162,7 +338,8 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       tehsil: data.tehsil,
       age: data.age,
       totalTeachers: parseInt(data.totalTeachers) || 0,
-      requiredFaculty: calculatedRequiredFaculty || 0
+      requiredFaculty: calculatedRequiredFaculty || 0,
+      schoolType: data.schoolType
     }
   }
 
@@ -442,7 +619,8 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       !formData.totalTeachers ||
       // !formData.requiredFaculty||
       !formData.girlsPercentage||
-      !formData.boysPercentage
+      !formData.boysPercentage||
+      !formData.schoolType
     ) {
       showToast('Please fill in all required fields', 'error')
       return
@@ -555,12 +733,10 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       const predefinedOptions = [
         'Foundation Community School (FCS)',
         'Accelerated Learning Program (ALP)',
-        'Middle Tech',
-        'New School Initiative (NSI)',
-        'Education Support Scheme (ESS)',
-        'Participatory Online Home-learning Alternative (POHA)',
-        'Virtual / Online School',
-        'Recognition of Prior Learning (RPL)',
+        'ALP Middle Tech',
+        'POHA',
+        'Virtual/Online School',
+        'RPL',
         'Adult Literacy Program',
         'Youth Skills Program'
       ];
@@ -587,7 +763,8 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
         tehsil: entry.tehsil || '',
         age: entry.age || '',
         totalTeachers: entry.totalTeachers || '',
-        requiredFaculty: entry.requiredFaculty || ''
+        requiredFaculty: entry.requiredFaculty || '',
+        schoolType: entry.schoolType || ''
       })
 
       // Parse existing location coordinates and set marker position
@@ -659,12 +836,23 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       age: '',
       totalTeachers: '',
       requiredFaculty: '',
-      customProgramType: ''
+      customProgramType: '',
+      schoolType: ''
     })
     setMarkerPosition(null) // Reset map marker
     setShowSuccessMessage(false)
     setIsEditMode(false)
     setEditingEntryId(null)
+
+    // Reset location search state
+    setLocationSearchResults([])
+    setShowLocationSuggestions(false)
+    setLocationSearchFeedback('')
+    setIsSearchingLocation(false)
+
+    // Reset map position and zoom
+    setMapPosition([34.0151, 71.5249])
+    setMapZoom(8)
   }
 
   const handleCancelEdit = () => {
@@ -1024,12 +1212,10 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                           <option value="">Select Program Type</option>
                           <option value="Foundation Community School (FCS)">Foundation Community School (FCS)</option>
                           <option value="Accelerated Learning Program (ALP)">Accelerated Learning Program (ALP)</option>
-                          <option value="Middle Tech">Middle Tech</option>
-                          <option value="New School Initiative (NSI)">New School Initiative (NSI)</option>
-                          <option value="Education Support Scheme (ESS)">Education Support Scheme (ESS)</option>
-                          <option value="Participatory Online Home-learning Alternative (POHA)">Participatory Online Home-learning Alternative (POHA)</option>
-                          <option value="Virtual / Online School">Virtual / Online School</option>
-                          <option value="Recognition of Prior Learning (RPL)">Recognition of Prior Learning (RPL)</option>
+                          <option value="ALP Middle Tech">ALP Middle Tech</option>
+                          <option value="POHA">POHA</option>
+                          <option value="Virtual/Online School">Virtual/Online School</option>
+                          <option value="RPL">RPL</option>
                           <option value="Adult Literacy Program">Adult Literacy Program</option>
                           <option value="Youth Skills Program">Youth Skills Program</option>
                           <option value="Other">Other</option>
@@ -1128,6 +1314,28 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                     )}
 
                   </div>
+
+                  {/* School / Madrasa */}
+                 <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">School / Madrasa</label>
+  <div className="relative">
+    <select
+      name="schoolType"
+      value={formData.schoolType || 'School'}
+      onChange={(e) => handleInputChange('schoolType', e.target.value)}
+      className="w-full appearance-none px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm pr-10"
+    >
+      <option value="School">School</option>
+      <option value="Madrasa">Madrasa</option>
+    </select>
+    {/* Custom dropdown arrow */}
+    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+  </div>
+</div>
 
                   {/* Required Faculty */}
                   {/* <div>
@@ -1234,18 +1442,80 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
               {/* Location */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm cursor-pointer"
-                  placeholder="Add GPS Location"
-                  disabled={isEditMode}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => handleInputChange('location', e.target.value)}
+                    onFocus={() => {
+                      if (locationSearchResults.length > 0) {
+                        setShowLocationSuggestions(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Delay hiding suggestions to allow clicking on them
+                      setTimeout(() => setShowLocationSuggestions(false), 200);
+                    }}
+                    className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm cursor-pointer"
+                    placeholder={isEditMode ? "Click on map to change location" : "Search location (e.g., Peshawar, Mardan) or enter coordinates (lat, lng)"}
+                    disabled={isEditMode}
+                  />
+
+                  {/* Loading indicator */}
+                  {isSearchingLocation && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+
+                  {/* Location Search Suggestions Dropdown */}
+                  {showLocationSuggestions && locationSearchResults.length > 0 && !isEditMode && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {locationSearchResults.map((location, index) => (
+                        <button
+                          key={location.id || index}
+                          type="button"
+                          onClick={() => handleLocationSelect(location)}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 focus:outline-none focus:bg-blue-50"
+                        >
+                          <div className="flex flex-col">
+                            <div className="font-medium text-gray-900">
+                              {location.name}
+                            </div>
+                            <div className="text-sm text-gray-500 truncate">
+                              {location.display_name}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {location.lat.toFixed(4)}, {location.lng.toFixed(4)} • {location.type}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Location Search Feedback */}
+                {locationSearchFeedback && (
+                  <div className={`text-xs mt-1 block ${
+                    locationSearchFeedback.includes('found') || locationSearchFeedback.includes('Location found')
+                      ? 'text-green-600'
+                      : locationSearchFeedback.includes('No locations') || locationSearchFeedback.includes('unavailable')
+                        ? 'text-orange-600'
+                        : locationSearchFeedback.includes('Searching')
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                  }`}>
+                    {locationSearchFeedback}
+                  </div>
+                )}
+
                 {isEditMode ? (
                   <span className="text-xs text-gray-500 mt-1 block">In edit mode, location can only be changed by selecting a new point on the map below.</span>
                 ) : (
-                  <span className="text-xs text-gray-500 mt-1 block">Enter coordinates or select a point on the map below.</span>
+                  <span className="text-xs text-gray-500 mt-1 block">
+                    Type a location name (e.g., Peshawar, Mardan, Islamabad) to search, enter coordinates (lat, lng), or click on the map below.
+                  </span>
                 )}
               </div>
 
@@ -1403,6 +1673,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age Group</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Teachers</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required Faculty</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School Type</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -1428,6 +1699,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.age}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.totalTeachers}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.requiredFaculty}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{entry.schoolType}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-3">
                             <button

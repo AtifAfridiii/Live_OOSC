@@ -258,9 +258,9 @@ const Register = () => {
               />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
                 I agree to the{' '}
-                <Link to="/terms" className="text-[#2c5aa0] hover:text-[#1e3a8a]">
+
                   Terms and Conditions
-                </Link>
+
               </label>
             </div>
 

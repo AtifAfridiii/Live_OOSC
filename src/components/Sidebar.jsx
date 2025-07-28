@@ -68,7 +68,7 @@ const Sidebar = ({ isOpen, onClose, onNavigate }) => {
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                 <span className="text-[#2c5aa0] font-bold text-sm"><img src={istock} alt="logo" /></span>
               </div>
-              <span className="font-medium text-sm">OOSC Edu App Track</span>
+              <span className="font-medium text-sm"> KP-NCLB </span>
             </div>
             {/* Close button for mobile only */}
             <button
