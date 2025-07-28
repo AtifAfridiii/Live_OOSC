@@ -105,22 +105,22 @@ export default function DistrictsPage() {
         <>
             <div className="p-4 md:p-6 bg-[#F8F9FA]">
                 <div className="max-w-7xl mx-auto mb-6">
-  <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-6">
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Districts Dashboard</h1>
-        <p className="text-gray-600 mt-1">Select a district to view detailed analytics and metrics</p>
-       <div className="flex gap-4 text-sm">
-         <h1 className="underline">District: {selectedDistrict}</h1>
-       <h1  className="underline">Tehsil: {selectedTehsil}</h1>
-       </div>
+  <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6">
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="flex-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Districts Dashboard</h1>
+        <p className="text-gray-600 mt-1 text-sm sm:text-base">Select a district to view detailed analytics and metrics</p>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm mt-2">
+          <h1 className="underline">District: {selectedDistrict || 'All'}</h1>
+          <h1 className="underline">Tehsil: {selectedTehsil || 'All'}</h1>
+        </div>
       </div>
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+        <div className="relative w-full sm:w-auto">
           <select
             value={selectedDistrict}
             onChange={e => setSelectedDistrict(e.target.value)}
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-64"
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 sm:px-4 py-2 pr-8 sm:pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:min-w-48 md:min-w-56 lg:min-w-64 text-sm sm:text-base"
             disabled={loading}
           >
             <option value="">All Districts</option>
@@ -128,14 +128,14 @@ export default function DistrictsPage() {
               <option key={district} value={district}>{district}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+          <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 pointer-events-none" />
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select
             value={selectedTehsil}
             onChange={e => setSelectedTehsil(e.target.value)}
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-64"
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 sm:px-4 py-2 pr-8 sm:pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:min-w-48 md:min-w-56 lg:min-w-64 text-sm sm:text-base"
             disabled={loading || !selectedDistrict}
           >
             <option value="">All Tehsils</option>
@@ -143,38 +143,60 @@ export default function DistrictsPage() {
               <option key={tehsil} value={tehsil}>{tehsil}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+          <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400 pointer-events-none" />
         </div>
       </div>
     </div>
   </div>
   <div className="mt-4">
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-  <StatsCard title="Total Children" value={(() => {
-    let total = 0;
-    filteredEntries.forEach(e => { total += Number(e.totalChildren) || 0; });
-    return total;
-  })()} icon={<Users className="w-6 h-6 text-green-600" />} bgColor={"bg-[#4A90E2]"} iconBg={"bg-[#e8f0fe]"} />
-  <StatsCard title="Programs" value={filteredEntries.length} icon={<Target className="w-6 h-6 text-blue-600" />} />
-  <StatsCard title="Dropout %" value={(() => {
-    let total = 0, dropout = 0;
-    filteredEntries.forEach(e => {
-      total += Number(e.totalChildren) || 0;
-      dropout += Number(e.outOfSchoolChildren) || 0;
-    });
-    return total > 0 ? ((dropout / total) * 100).toFixed(1) + '%' : '0%';
-  })()} icon={<ArrowBigDownIcon className="w-6 h-6 text-red-600" />} bgColor={"bg-[#E1F5FE]"} iconBg={"bg-[#e0f7fa]"} />
-  <StatsCard title="Girls %" value={(() => {
-    let total = 0, girls = 0;
-    filteredEntries.forEach(e => {
-      const children = Number(e.totalChildren) || 0;
-      const girlsPercent = Number(e.girlsPercentage) || 0;
-      girls += (girlsPercent / 100) * children;
-      total += children;
-    });
-    return total > 0 ? ((girls / total) * 100).toFixed(1) + '%' : '0%';
-  })()} icon={<PersonStandingIcon className="w-6 h-6 text-red-600" />} bgColor={"bg-[#F5F5F5]"} iconBg={"bg-[#fce4ec]"} />
-</div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <StatsCard
+        title="Total Children"
+        value={(() => {
+          let total = 0;
+          filteredEntries.forEach(e => { total += Number(e.totalChildren) || 0; });
+          return total;
+        })()}
+        icon={<Users className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />}
+        bgColor={"bg-[#4A90E2]"}
+        iconBg={"bg-[#e8f0fe]"}
+      />
+      <StatsCard
+        title="Programs"
+        value={filteredEntries.length}
+        icon={<Target className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />}
+      />
+      <StatsCard
+        title="Dropout %"
+        value={(() => {
+          let total = 0, dropout = 0;
+          filteredEntries.forEach(e => {
+            total += Number(e.totalChildren) || 0;
+            dropout += Number(e.outOfSchoolChildren) || 0;
+          });
+          return total > 0 ? ((dropout / total) * 100).toFixed(1) + '%' : '0%';
+        })()}
+        icon={<ArrowBigDownIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />}
+        bgColor={"bg-[#E1F5FE]"}
+        iconBg={"bg-[#e0f7fa]"}
+      />
+      <StatsCard
+        title="Girls %"
+        value={(() => {
+          let total = 0, girls = 0;
+          filteredEntries.forEach(e => {
+            const children = Number(e.totalChildren) || 0;
+            const girlsPercent = Number(e.girlsPercentage) || 0;
+            girls += (girlsPercent / 100) * children;
+            total += children;
+          });
+          return total > 0 ? ((girls / total) * 100).toFixed(1) + '%' : '0%';
+        })()}
+        icon={<PersonStandingIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />}
+        bgColor={"bg-[#F5F5F5]"}
+        iconBg={"bg-[#fce4ec]"}
+      />
+    </div>
   </div>
 </div>
 

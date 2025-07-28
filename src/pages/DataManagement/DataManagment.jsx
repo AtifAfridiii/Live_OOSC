@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Search, Upload, Edit, Trash2, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import axiosInstance from '../../utils/axiosInstance'
@@ -72,14 +72,25 @@ const DataManagement = () => {
   const [locationSearchFeedback, setLocationSearchFeedback] = useState('')
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
 
+  // Debounce timer ref for location search
+  const searchTimeoutRef = useRef(null)
+
 const handleInputChange = (field, value) => {
     if (field === 'programType' && value === 'Other') {
       setFormData(prev => ({...prev, customProgramType: ''}));
     }
 
-    // Handle location search functionality
+    // Handle location search functionality with debouncing
     if (field === 'location') {
-      handleLocationSearch(value);
+      // Clear previous timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      // Set new timeout for debounced search
+      searchTimeoutRef.current = setTimeout(() => {
+        handleLocationSearch(value);
+      }, 500); // 500ms debounce delay
     }
 
     setFormData(prev => ({
@@ -216,17 +227,30 @@ const handleInputChange = (field, value) => {
     }
   };
 
-  // Map controller for smooth transitions
-  const MapController = ({ center, zoom }) => {
+  // Map controller for smooth transitions - memoized to prevent unnecessary re-renders
+  const MapController = React.memo(({ center, zoom }) => {
     const map = useMapEvents({});
+    const lastCenterRef = useRef(null);
+    const lastZoomRef = useRef(null);
 
     React.useEffect(() => {
       // Prevent running before map is initialized
       if (!map || typeof map.getCenter !== 'function' || typeof map.getZoom !== 'function') return;
-      if (center && zoom) {
+      if (!center || !zoom) return;
+
+      // Check if center or zoom actually changed
+      const centerChanged = !lastCenterRef.current ||
+        Math.abs(lastCenterRef.current[0] - center[0]) > 0.0001 ||
+        Math.abs(lastCenterRef.current[1] - center[1]) > 0.0001;
+
+      const zoomChanged = !lastZoomRef.current ||
+        Math.abs(lastZoomRef.current - zoom) > 0.1;
+
+      if (centerChanged || zoomChanged) {
         const currentCenter = map.getCenter();
         const currentZoom = map.getZoom();
-        // Only fly if center/zoom are different
+
+        // Only fly if map center/zoom are different from target
         if (
           Math.abs(currentCenter.lat - center[0]) > 0.0001 ||
           Math.abs(currentCenter.lng - center[1]) > 0.0001 ||
@@ -237,11 +261,15 @@ const handleInputChange = (field, value) => {
             easeLinearity: 0.25
           });
         }
+
+        // Update refs
+        lastCenterRef.current = center;
+        lastZoomRef.current = zoom;
       }
     }, [center, zoom, map]);
 
     return null;
-  };
+  });
 
   // Map click handler component
   const MapClickHandler = () => {
@@ -263,8 +291,8 @@ const handleInputChange = (field, value) => {
     return null
   }
 
-  // Interactive Map Component
-  const InteractiveMap = () => {
+  // Interactive Map Component - memoized to prevent unnecessary re-renders
+  const InteractiveMap = React.memo(() => {
     try {
       return (
         <div className="w-full h-64 border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
@@ -273,6 +301,7 @@ const handleInputChange = (field, value) => {
             zoom={mapZoom}
             style={{ height: '100%', width: '100%' }}
             className="z-0"
+            key={`map-${mapPosition[0]}-${mapPosition[1]}-${mapZoom}`} // Prevent unnecessary re-mounts
           >
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -287,7 +316,10 @@ const handleInputChange = (field, value) => {
         </div>
       )
     } catch (error) {
-      console.error('Error rendering map:', error)
+      // Only log errors in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error rendering map:', error)
+      }
       return (
         <div className="w-full h-64 border border-gray-300 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
           <div className="text-center text-gray-500">
@@ -297,7 +329,7 @@ const handleInputChange = (field, value) => {
         </div>
       )
     }
-  }
+  })
 
   // Transform form data to match backend schema with correct data types
 const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) => {
@@ -349,51 +381,28 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
 
     // Check authentication before making API call
     const token = localStorage.getItem('token')
-    console.log('🔐 Auth check - Token exists:', !!token)
     if (!token) {
-      console.error('❌ No authentication token found!')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ No authentication token found!')
+      }
       showToast('Authentication required. Please login.', 'error')
       setLoading(false)
       return
     }
 
     try {
-      console.log('🔄 Fetching entries from:', API_PATHS.ENTRIES.GET_ALL_ENTRIES)
       const response = await axiosInstance.get(API_PATHS.ENTRIES.GET_ALL_ENTRIES)
-
-      console.log('📥 Raw API Response:', response)
-      console.log('📊 Response Data:', response.data)
-      console.log('📊 Response Status:', response.status)
-
-      // Check different possible data structures
-      console.log('🔍 Checking data structure:')
-      console.log('  - response.data:', response.data)
-      console.log('  - response.data.entries:', response.data?.entries)
-      console.log('  - response.data.data:', response.data?.data)
-      console.log('  - Array.isArray(response.data):', Array.isArray(response.data))
 
       // Try different extraction methods
       let entriesData = []
       if (response.data?.entries && Array.isArray(response.data.entries)) {
         entriesData = response.data.entries
-        console.log('✅ Found entries in response.data.entries')
       } else if (response.data?.data && Array.isArray(response.data.data)) {
         entriesData = response.data.data
-        console.log('✅ Found entries in response.data.data')
       } else if (Array.isArray(response.data)) {
         entriesData = response.data
-        console.log('✅ Found entries directly in response.data')
       } else {
-        console.log('❌ No valid entries array found in response')
         entriesData = []
-      }
-
-      console.log('📋 Extracted entries data:', entriesData)
-      console.log('📋 Entries count:', entriesData.length)
-
-      if (entriesData.length > 0) {
-        console.log('📋 First entry sample:', entriesData[0])
-        console.log('📋 Entry keys:', Object.keys(entriesData[0] || {}))
       }
 
       // Sort entries by creation date (newest first)
@@ -404,17 +413,12 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
         return dateB - dateA // Descending order (newest first)
       })
 
-      console.log('📅 Sorted entries by date (newest first):', sortedEntries.length, 'entries')
-      if (sortedEntries.length > 0) {
-        console.log('📅 First entry date:', sortedEntries[0].createdAt || sortedEntries[0].date || 'No date field')
-        console.log('📅 Last entry date:', sortedEntries[sortedEntries.length - 1].createdAt || sortedEntries[sortedEntries.length - 1].date || 'No date field')
-      }
-
       setEntries(sortedEntries)
-      console.log('✅ Entries set in state:', sortedEntries.length, 'entries')
     } catch (error) {
-      console.error('❌ Error fetching entries:', error)
-      console.error('❌ Error details:', error.response?.data)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error fetching entries:', error)
+        console.error('❌ Error details:', error.response?.data)
+      }
       setEntries([])
       showToast('Failed to load entries', 'error')
     } finally {
@@ -425,17 +429,17 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
   const createEntry = async (entryData) => {
     setLoading(true)
     try {
-      console.log('📤 Creating entry with data:', entryData)
       const response = await axiosInstance.post(API_PATHS.ENTRIES.CREATE_ENTRY, entryData)
-      console.log('✅ Created entry response:', response.data)
       await fetchAllEntries()
       // Reset to first page to show the new entry at the top
       setCurrentPage(1)
       showToast('Entry created successfully', 'success')
       return response.data
     } catch (error) {
-      console.error('❌ Error creating entry:', error)
-      console.error('❌ Error response:', error.response?.data)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error creating entry:', error)
+        console.error('❌ Error response:', error.response?.data)
+      }
       showToast('Failed to create entry', 'error')
       throw error
     } finally {
@@ -446,15 +450,15 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
   const updateEntry = async (entryId, entryData) => {
     setLoading(true)
     try {
-      console.log('📤 Updating entry', entryId, 'with data:', entryData)
       const response = await axiosInstance.put(API_PATHS.ENTRIES.UPDATE_ENTRY_BY_ID(entryId), entryData)
-      console.log('✅ Updated entry response:', response.data)
       await fetchAllEntries()
       showToast('Entry updated successfully', 'success')
       return response.data
     } catch (error) {
-      console.error('❌ Error updating entry:', error)
-      console.error('❌ Error response:', error.response?.data)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error updating entry:', error)
+        console.error('❌ Error response:', error.response?.data)
+      }
       showToast('Failed to update entry', 'error')
       throw error
     } finally {
@@ -466,11 +470,12 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
     setLoading(true)
     try {
       await axiosInstance.delete(API_PATHS.ENTRIES.DELETE_ENTRY_BY_ID(entryId))
-      console.log('Deleted entry:', entryId)
       await fetchAllEntries()
       showToast('Entry deleted successfully', 'success')
     } catch (error) {
-      console.error('Error deleting entry:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error deleting entry:', error)
+      }
       const errorMessage = error.response?.data?.message || 'Failed to delete entry'
       showToast(errorMessage, 'error')
     } finally {
@@ -482,10 +487,11 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
     setLoading(true)
     try {
       const response = await axiosInstance.get(API_PATHS.ENTRIES.GET_ENTRY_BY_ID(entryId))
-      console.log('Fetched entry by ID:', response.data)
       return response.data
     } catch (error) {
-      console.error('Error fetching entry by ID:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching entry by ID:', error)
+      }
       showToast('Failed to fetch entry details', 'error')
       throw error
     } finally {
@@ -512,7 +518,6 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage)
-    console.log('📄 Page changed to:', newPage)
   }
 
   const handleGoToPage = () => {
@@ -522,7 +527,6 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
     if (pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber)
       setGoToPage('')
-      console.log('📄 Navigated to page:', pageNumber)
     } else {
       showToast(`Please enter a page number between 1 and ${totalPages}`, 'error')
     }
@@ -537,20 +541,18 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
   // Check authentication, load entries, and get user role on component mount
   useEffect(() => {
     const initializeComponent = async () => {
-      console.log('🚀 Initializing DataManagement component...')
       const isAuth = checkAuthentication()
       if (isAuth) {
         // Fetch user profile to get role
         try {
-          console.log('🧪 Testing token with profile endpoint...')
           const profileResponse = await axiosInstance.get(API_PATHS.AUTH.GET_PROFILE)
-          console.log('✅ Profile test successful:', profileResponse.data)
           const role = profileResponse.data?.role || profileResponse.data?.user?.role || ''
           setUserRole(role)
         } catch (error) {
-          console.error('❌ Profile test failed:', error.response?.status, error.response?.data)
+          if (process.env.NODE_ENV === 'development') {
+            console.error('❌ Profile test failed:', error.response?.status, error.response?.data)
+          }
           if (error.response?.status === 401) {
-            console.warn('🔐 Token is invalid or expired')
             showToast('Session expired. Please login again.', 'error')
             setTimeout(() => {
               localStorage.clear();
@@ -562,41 +564,52 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
         try {
           await fetchAllEntries()
         } catch (error) {
-          console.error('Failed to load initial data:', error)
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Failed to load initial data:', error)
+          }
           setEntries([])
         }
       } else {
-        console.log('❌ User is not authenticated')
         showToast('Please login to access data management', 'error')
       }
     }
     initializeComponent()
   }, [])
 
-  // Debug entries state changes
+  // Cleanup timeout on unmount
   useEffect(() => {
-    console.log('📊 Entries state changed:', {
-      entriesCount: (entries || []).length,
-      entries: entries,
-      firstEntry: entries?.[0]
-    })
-  }, [entries])
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [])
 
-  // Watch for manual location input changes and update marker
-  useEffect(() => {
-    if (formData.location) {
-      const locationParts = formData.location.split(',')
+  // Watch for manual location input changes and update marker - memoized to prevent unnecessary updates
+  const updateMarkerFromLocation = useCallback((location) => {
+    if (location) {
+      const locationParts = location.split(',')
       if (locationParts.length === 2) {
         const lat = parseFloat(locationParts[0].trim())
         const lng = parseFloat(locationParts[1].trim())
         if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          setMarkerPosition([lat, lng])
+          setMarkerPosition(prev => {
+            // Only update if position actually changed
+            if (!prev || prev[0] !== lat || prev[1] !== lng) {
+              return [lat, lng]
+            }
+            return prev
+          })
         }
       }
     } else {
-      setMarkerPosition(null)
+      setMarkerPosition(prev => prev ? null : prev)
     }
-  }, [formData.location])
+  }, [])
+
+  useEffect(() => {
+    updateMarkerFromLocation(formData.location)
+  }, [formData.location, updateMarkerFromLocation])
 
   const handleAddEntry = async () => {
     // Check if program type is "Other" and custom type is empty
@@ -764,7 +777,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
         age: entry.age || '',
         totalTeachers: entry.totalTeachers || '',
         requiredFaculty: entry.requiredFaculty || '',
-        schoolType: entry.schoolType || ''
+        schoolType: entry.schoolType || 'School'
       })
 
       // Parse existing location coordinates and set marker position
@@ -837,7 +850,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       totalTeachers: '',
       requiredFaculty: '',
       customProgramType: '',
-      schoolType: ''
+      schoolType: 'School'
     })
     setMarkerPosition(null) // Reset map marker
     setShowSuccessMessage(false)
@@ -867,14 +880,13 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
   }
 
   const handleUploadCSV = () => {
-    console.log('Uploading CSV')
+    // CSV upload functionality placeholder
   }
 
   // Authentication helpers
   const checkAuthentication = () => {
     const authStatus = isUserAuthenticated()
     const token = getAuthToken()
-    console.log('🔐 Authentication Status:', { authStatus, hasToken: !!token })
     setIsAuthenticated(authStatus && !!token)
     return authStatus && !!token
   }
@@ -885,58 +897,41 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
 
 
 
-  // Debug entries state and filtering
-  console.log('🔍 Debug Info:')
-  console.log('  - entries state:', entries)
-  console.log('  - entries length:', (entries || []).length)
-  console.log('  - searchTerm:', searchTerm)
-  console.log('  - currentPage:', currentPage)
+  // Filter entries based on search term - memoized for performance
+  const filteredEntries = useMemo(() => {
+    return (entries || []).filter(entry => {
+      if (!entry) {
+        return false
+      }
 
-  const filteredEntries = (entries || []).filter(entry => {
-    if (!entry) {
-      console.log('⚠️ Found null/undefined entry')
-      return false
-    }
+      // If no search term, return all entries
+      if (!searchTerm || searchTerm.trim() === '') {
+        return true
+      }
 
-    // If no search term, return all entries
-    if (!searchTerm || searchTerm.trim() === '') {
-      return true
-    }
+      const searchLower = searchTerm.toLowerCase()
+      const matchesDistrict = entry?.district?.toLowerCase().includes(searchLower)
+      const matchesProgram = entry?.programType?.toLowerCase().includes(searchLower)
+      const matchesDate = entry?.date?.toLowerCase().includes(searchLower)
+      const tehsilName = entry?.tehsil?.toLowerCase().includes(searchLower)
+      const unionCouncilName = entry?.unioncouncil?.toLowerCase().includes(searchLower)
+      const villageCouncilName = entry?.villagecouncil?.toLowerCase().includes(searchLower)
+      const pkName = entry?.pk?.toLowerCase().includes(searchLower)
+      const nationalName = entry?.national?.toLowerCase().includes(searchLower)
 
-    const searchLower = searchTerm.toLowerCase()
-    const matchesDistrict = entry?.district?.toLowerCase().includes(searchLower)
-    const matchesProgram = entry?.programType?.toLowerCase().includes(searchLower)
-    const matchesDate = entry?.date?.toLowerCase().includes(searchLower)
-    const tehsilName = entry?.tehsil?.toLowerCase().includes(searchLower)
-    const unionCouncilName = entry?.unioncouncil?.toLowerCase().includes(searchLower)
-    const villageCouncilName = entry?.villagecouncil?.toLowerCase().includes(searchLower)
-    const pkName = entry?.pk?.toLowerCase().includes(searchLower)
-    const nationalName = entry?.national?.toLowerCase().includes(searchLower)
-
-    const matches = matchesDistrict || matchesProgram || matchesDate || tehsilName || unionCouncilName || villageCouncilName || pkName || nationalName
-
-    if (matches) {
-      console.log('✅ Entry matches search:', entry.district, entry.programType, entry.date)
-    }
-
-    return matches
-  })
+      return matchesDistrict || matchesProgram || matchesDate || tehsilName || unionCouncilName || villageCouncilName || pkName || nationalName
+    })
+  }, [entries, searchTerm])
 
   // Reset to first page when search term changes
   useEffect(() => {
     setCurrentPage(1)
-    console.log('� Search term changed, reset to page 1')
   }, [searchTerm])
 
-  // Get paginated entries for current page
-  const paginatedEntries = getPaginatedEntries(filteredEntries)
-  const totalPages = getTotalPages(filteredEntries.length)
-  const paginationInfo = getPaginationInfo(filteredEntries.length)
-
-  console.log('📊 Filtered entries:', filteredEntries.length)
-  console.log('📄 Paginated entries for page', currentPage, ':', paginatedEntries.length)
-  console.log('📄 Total pages:', totalPages)
-  console.log('📄 Pagination info:', paginationInfo)
+  // Get paginated entries for current page - memoized for performance
+  const paginatedEntries = useMemo(() => getPaginatedEntries(filteredEntries), [filteredEntries, currentPage])
+  const totalPages = useMemo(() => getTotalPages(filteredEntries.length), [filteredEntries.length])
+  const paginationInfo = useMemo(() => getPaginationInfo(filteredEntries.length), [filteredEntries.length, currentPage])
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] py-6 px-2 md:px-6">
@@ -1618,13 +1613,6 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                 </div>
               )}
             </div>
-
-            {/* Debug table rendering */}
-            {console.log('🎨 Rendering table with:', {
-              filteredEntriesLength: filteredEntries.length,
-              entriesLength: (entries || []).length,
-              showingEmptyState: filteredEntries.length === 0
-            })}
 
             {!isAuthenticated ? (
               <div className="text-center py-12">
