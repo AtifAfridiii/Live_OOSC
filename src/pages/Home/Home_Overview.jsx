@@ -4,7 +4,7 @@ import BottomSection from '../../components/BottomSection'
 import ActionButtons from '../../components/ActionButtons'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
-import { ChevronDown, Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2, ChevronUp, Filter } from 'lucide-react'
 
 
 const MainContent = () => {
@@ -21,14 +21,27 @@ const MainContent = () => {
     gender: 'All',
     ageGroup: 'All',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    tehsil: 'All',
+    unioncouncil: 'All',
+    villagecouncil: 'All',
+    pk: 'All',
+    national: 'All',
+    program: 'All',
+
   })
 
   // Dropdown options state
   const [filterOptions, setFilterOptions] = useState({
     districts: ['All'],
     genders: ['All', 'Boys', 'Girls'],
-    ageGroups: ['All']
+    ageGroups: ['All'],
+    tehsils: ['All'],
+    unioncouncils: ['All'],
+    villagecouncils: ['All'],
+    pks: ['All'],
+    nationals: ['All'],
+    programs: ['All']
   })
 
   // Dropdown visibility state
@@ -36,13 +49,22 @@ const MainContent = () => {
     district: false,
     gender: false,
     ageGroup: false,
-    dateRange: false
+    dateRange: false,
+    tehsil: false,
+    unioncouncil: false,
+    villagecouncil: false,
+    pk: false,
+    national: false,
+    program: false
   })
 
   // Loading and error states
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [filteredData, setFilteredData] = useState([])
+
+  // Additional filters visibility state
+  const [showAdditionalFilters, setShowAdditionalFilters] = useState(false)
 
   // Fetch all entries from API
   const fetchAllEntries = useCallback(async () => {
@@ -64,6 +86,14 @@ const MainContent = () => {
       // Extract unique districts, genders, and age values from data
       const districts = ['All', ...new Set(data.map(entry => entry.district).filter(Boolean))];
       const genders = ['All', 'Boys', 'Girls'];
+
+      // Extract unique values for new geographic filters
+      const tehsils = ['All', ...new Set(data.map(entry => entry.tehsil).filter(Boolean))];
+      const unioncouncils = ['All', ...new Set(data.map(entry => entry.unioncouncil).filter(Boolean))];
+      const villagecouncils = ['All', ...new Set(data.map(entry => entry.villagecouncil).filter(Boolean))];
+      const pks = ['All', ...new Set(data.map(entry => entry.pk).filter(Boolean))];
+      const nationals = ['All', ...new Set(data.map(entry => entry.national).filter(Boolean))];
+      const programs = ['All', ...new Set(data.map(entry => entry.programType).filter(Boolean))];
 
       // Extract individual age values from the age field
       const ageSet = new Set();
@@ -101,10 +131,49 @@ const MainContent = () => {
       setFilterOptions({
         districts,
         genders,
-        ageGroups
+        ageGroups,
+        tehsils,
+        unioncouncils,
+        villagecouncils,
+        pks,
+        nationals,
+        programs
       });
     } catch (error) {
       console.error('Error fetching filter options:', error);
+    }
+  }, [fetchAllEntries]);
+
+  // Fetch cascading filter options based on selected district
+  const fetchCascadingFilterOptions = useCallback(async (selectedDistrict) => {
+    try {
+      const data = await fetchAllEntries();
+
+      // Filter data by selected district if not 'All'
+      const districtFilteredData = selectedDistrict === 'All'
+        ? data
+        : data.filter(entry => entry.district === selectedDistrict);
+
+      // Extract unique values for cascading filters based on district selection
+      const tehsils = ['All', ...new Set(districtFilteredData.map(entry => entry.tehsil).filter(Boolean))];
+      const unioncouncils = ['All', ...new Set(districtFilteredData.map(entry => entry.unioncouncil).filter(Boolean))];
+      const villagecouncils = ['All', ...new Set(districtFilteredData.map(entry => entry.villagecouncil).filter(Boolean))];
+      const pks = ['All', ...new Set(districtFilteredData.map(entry => entry.pk).filter(Boolean))];
+      const nationals = ['All', ...new Set(districtFilteredData.map(entry => entry.national).filter(Boolean))];
+      const programs = ['All', ...new Set(districtFilteredData.map(entry => entry.programType).filter(Boolean))];
+
+      // Update filter options with cascading data
+      setFilterOptions(prev => ({
+        ...prev,
+        tehsils,
+        unioncouncils,
+        villagecouncils,
+        pks,
+        nationals,
+        programs
+      }));
+    } catch (error) {
+      console.error('Error fetching cascading filter options:', error);
     }
   }, [fetchAllEntries]);
 
@@ -113,6 +182,36 @@ const MainContent = () => {
     return data.filter(entry => {
       // District filter
       if (currentFilters.district !== 'All' && entry.district !== currentFilters.district) {
+        return false;
+      }
+
+      // Tehsil filter
+      if (currentFilters.tehsil !== 'All' && entry.tehsil !== currentFilters.tehsil) {
+        return false;
+      }
+
+      // Union Council filter
+      if (currentFilters.unioncouncil !== 'All' && entry.unioncouncil !== currentFilters.unioncouncil) {
+        return false;
+      }
+
+      // Village Council filter
+      if (currentFilters.villagecouncil !== 'All' && entry.villagecouncil !== currentFilters.villagecouncil) {
+        return false;
+      }
+
+      // PK filter
+      if (currentFilters.pk !== 'All' && entry.pk !== currentFilters.pk) {
+        return false;
+      }
+
+      // National filter
+      if (currentFilters.national !== 'All' && entry.national !== currentFilters.national) {
+        return false;
+      }
+
+      // Program filter
+      if (currentFilters.program !== 'All' && entry.programType !== currentFilters.program) {
         return false;
       }
 
@@ -334,7 +433,13 @@ const MainContent = () => {
           district: false,
           gender: false,
           ageGroup: false,
-          dateRange: false
+          dateRange: false,
+          tehsil: false,
+          unioncouncil: false,
+          villagecouncil: false,
+          pk: false,
+          national: false,
+          program: false
         });
       }
     };
@@ -345,12 +450,39 @@ const MainContent = () => {
     };
   }, []);
 
+  // Toggle additional filters visibility
+  const toggleAdditionalFilters = () => {
+    setShowAdditionalFilters(prev => !prev);
+  };
+
   // Filter change handlers
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({
       ...prev,
       [filterType]: value
     }));
+
+    // If district changes, update cascading filters and reset dependent filters
+    if (filterType === 'district') {
+      fetchCascadingFilterOptions(value);
+
+      // Show additional filters when a specific district is selected
+      if (value !== 'All') {
+        setShowAdditionalFilters(true);
+      }
+
+      // Reset dependent filters when district changes
+      setFilters(prev => ({
+        ...prev,
+        [filterType]: value,
+        tehsil: 'All',
+        unioncouncil: 'All',
+        villagecouncil: 'All',
+        pk: 'All',
+        national: 'All',
+        program: 'All'
+      }));
+    }
 
     // Close the dropdown after selection
     setDropdownStates(prev => ({
@@ -373,7 +505,13 @@ const MainContent = () => {
         district: false,
         gender: false,
         ageGroup: false,
-        dateRange: false
+        dateRange: false,
+        tehsil: false,
+        unioncouncil: false,
+        villagecouncil: false,
+        pk: false,
+        national: false,
+        program: false
       };
       newState[dropdownType] = !prev[dropdownType];
       return newState;
@@ -387,8 +525,17 @@ const MainContent = () => {
       gender: 'All',
       ageGroup: 'All',
       startDate: '',
-      endDate: ''
+      endDate: '',
+      tehsil: 'All',
+      unioncouncil: 'All',
+      villagecouncil: 'All',
+      pk: 'All',
+      national: 'All',
+      program: 'All'
     });
+
+    // Hide additional filters when resetting
+    setShowAdditionalFilters(false);
   };
 
   return (
@@ -417,7 +564,7 @@ const MainContent = () => {
             </div>
           )}
 
-          {/* Filter Dropdowns */}
+          {/* Main Filter Dropdowns */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* District Filter */}
             <div className="relative dropdown-container">
@@ -564,6 +711,207 @@ const MainContent = () => {
               )}
             </div>
           </div>
+
+          {/* Toggle Button for Additional Filters */}
+          {(filters.district !== 'All' || showAdditionalFilters) && (
+            <div className="flex justify-start mt-4">
+              <button
+                onClick={toggleAdditionalFilters}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#4A90E2] bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200"
+              >
+                <Filter className="w-4 h-4" />
+                <span>{showAdditionalFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters'}</span>
+                {showAdditionalFilters ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Additional Filters Section - Conditionally Displayed */}
+          {showAdditionalFilters && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 transition-all duration-300 ease-in-out">
+              <h4 className="text-sm  font-semibold text-gray-700 mb-3">Advanced Geographic Filters</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+
+                {/* Tehsil Filter */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('tehsil')}
+                    className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                  >
+                    <span className="truncate">
+                      {filters.tehsil === 'All' ? 'Tehsil' : filters.tehsil}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.tehsil ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {dropdownStates.tehsil && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      {filterOptions.tehsils.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterChange('tehsil', option)}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors duration-200 ${
+                            filters.tehsil === option ? 'bg-blue-50 text-[#4A90E2] font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Union Council Filter */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('unioncouncil')}
+                    className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                  >
+                    <span className="truncate">
+                      {filters.unioncouncil === 'All' ? 'Union Council' : filters.unioncouncil}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.unioncouncil ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {dropdownStates.unioncouncil && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      {filterOptions.unioncouncils.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterChange('unioncouncil', option)}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors duration-200 ${
+                            filters.unioncouncil === option ? 'bg-blue-50 text-[#4A90E2] font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Village Council Filter */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('villagecouncil')}
+                    className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                  >
+                    <span className="truncate">
+                      {filters.villagecouncil === 'All' ? 'Village Council' : filters.villagecouncil}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.villagecouncil ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {dropdownStates.villagecouncil && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      {filterOptions.villagecouncils.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterChange('villagecouncil', option)}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors duration-200 ${
+                            filters.villagecouncil === option ? 'bg-blue-50 text-[#4A90E2] font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* PK Filter */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('pk')}
+                    className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                  >
+                    <span className="truncate">
+                      {filters.pk === 'All' ? 'PK' : filters.pk}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.pk ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {dropdownStates.pk && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      {filterOptions.pks.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterChange('pk', option)}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors duration-200 ${
+                            filters.pk === option ? 'bg-blue-50 text-[#4A90E2] font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* National Filter */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('national')}
+                    className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                  >
+                    <span className="truncate">
+                      {filters.national === 'All' ? 'National' : filters.national}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.national ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {dropdownStates.national && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      {filterOptions.nationals.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterChange('national', option)}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors duration-200 ${
+                            filters.national === option ? 'bg-blue-50 text-[#4A90E2] font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Program Filter */}
+                <div className="relative dropdown-container">
+                  <button
+                    onClick={() => toggleDropdown('program')}
+                    className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                  >
+                    <span className="truncate">
+                      {filters.program === 'All' ? 'Program' : filters.program}
+                    </span>
+                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.program ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {dropdownStates.program && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      {filterOptions.programs.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleFilterChange('program', option)}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg transition-colors duration-200 ${
+                            filters.program === option ? 'bg-blue-50 text-[#4A90E2] font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Active Filters Display */}
           <div className="mt-4 flex flex-wrap gap-2">

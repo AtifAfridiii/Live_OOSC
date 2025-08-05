@@ -101,12 +101,7 @@ function BottomSection({ filteredData = [], loading = false }) {
   }, [filteredData]);
 
   // Activity data
-  const activities = [
-    { text: 'Weekly survey uploaded in Bajaur Tehsil', time: '2 hours ago', user: 'Admin' },
-    { text: 'District Survey updated (OOSC by 4%)', time: '4 hours ago', user: 'User' },
-    { text: 'Uploaded girls enrollment data', time: '6 hours ago', user: 'Admin' },
-    { text: 'Created report on 2024', time: '8 hours ago', user: 'User' }
-  ];
+
 
   // Show loading state
   if (loading) {
@@ -134,20 +129,7 @@ function BottomSection({ filteredData = [], loading = false }) {
               <span className="text-gray-600">Loading dropout data...</span>
             </div>
           </div>
-          <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">Activity</h3>
-            <div className="space-y-4">
-              {activities.map((activity, index) => (
-                <div key={index} className="flex items-start space-x-2 md:space-x-3">
-                  <div className="w-2 h-2 bg-[#4A90E2] rounded-full mt-2 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm text-gray-900 leading-relaxed">{activity.text}</p>
-                    <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
     );
@@ -260,17 +242,9 @@ function BottomSection({ filteredData = [], loading = false }) {
 
         {/* Activity */}
         <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100">
-          <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">Activity</h3>
+          <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">Map</h3>
           <div className="space-y-4">
-            {activities.map((activity, index) => (
-              <div key={index} className="flex items-start space-x-2 md:space-x-3">
-                <div className="w-2 h-2 bg-[#4A90E2] rounded-full mt-2 flex-shrink-0"></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs md:text-sm text-gray-900 leading-relaxed">{activity.text}</p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+
           </div>
         </div>
       </div>

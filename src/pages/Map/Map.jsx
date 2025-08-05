@@ -286,7 +286,7 @@ const Map = () => {
           tehsil: entry.tehsil || 'N/A',
           pk: entry.pk || 'N/A',
           national: entry.national || 'N/A',
-          schoolType: entry.schoolType || 'School' // Default to 'School' if not specified
+          schoolType: entry.schoolType || 'School' 
         }))
 
       setDistricts(validDistricts)
