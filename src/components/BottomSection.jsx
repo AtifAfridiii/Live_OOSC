@@ -1,6 +1,43 @@
 import React,{useState,useEffect} from 'react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts'
 import { Loader2 } from 'lucide-react'
+import { MapContainer, TileLayer, Circle, Popup, useMap } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Fix for default markers in react-leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+})
+
+// Map controller component to handle map updates
+const MapController = ({ center, zoom }) => {
+  const map = useMap()
+
+  React.useEffect(() => {
+    if (!map || typeof map.getCenter !== 'function' || typeof map.getZoom !== 'function') return;
+    if (center && zoom) {
+      const currentCenter = map.getCenter()
+      const currentZoom = map.getZoom()
+      // Only fly if center/zoom are different
+      if (
+        Math.abs(currentCenter.lat - center[0]) > 0.001 ||
+        Math.abs(currentCenter.lng - center[1]) > 0.001 ||
+        currentZoom !== zoom
+      ) {
+        map.flyTo(center, zoom, {
+          duration: 1.5,
+          easeLinearity: 0.25
+        })
+      }
+    }
+  }, [center, zoom, map])
+
+  return null
+}
 
 function BottomSection({ filteredData = [], loading = false }) {
 
@@ -15,6 +52,11 @@ function BottomSection({ filteredData = [], loading = false }) {
   const [districtData, setDistrictData] = useState([]);
   const [showAllPrograms, setShowAllPrograms] = useState(false);
   const [showAllDistricts, setShowAllDistricts] = useState(false);
+
+  // Map state
+  const [mapCenter, setMapCenter] = useState([34.0151, 71.5249]); // Default center for Pakistan
+  const [mapZoom, setMapZoom] = useState(8);
+  const [concentrationCircles, setConcentrationCircles] = useState([]);
 
   // Process filtered data for charts
   useEffect(() => {
@@ -99,6 +141,119 @@ function BottomSection({ filteredData = [], loading = false }) {
       ]);
     }
   }, [filteredData]);
+
+  // Calculate concentration circles for out-of-school children
+  useEffect(() => {
+    if (filteredData && filteredData.length > 0) {
+      try {
+        const circles = calculateConcentrationCircles(filteredData);
+        setConcentrationCircles(circles);
+
+        // Update map center to show the data area
+        if (circles.length > 0) {
+          const avgLat = circles.reduce((sum, circle) => sum + circle.center[0], 0) / circles.length;
+          const avgLng = circles.reduce((sum, circle) => sum + circle.center[1], 0) / circles.length;
+
+          // Validate coordinates before setting
+          if (!isNaN(avgLat) && !isNaN(avgLng) && avgLat !== 0 && avgLng !== 0) {
+            setMapCenter([avgLat, avgLng]);
+            setMapZoom(10);
+          } else {
+            // Fallback to default Pakistan center
+            setMapCenter([34.0151, 71.5249]);
+            setMapZoom(8);
+          }
+        } else {
+          // No circles but data exists - center on Pakistan
+          setMapCenter([34.0151, 71.5249]);
+          setMapZoom(8);
+        }
+      } catch (error) {
+        console.error('Error calculating concentration circles:', error);
+        setConcentrationCircles([]);
+        setMapCenter([34.0151, 71.5249]);
+        setMapZoom(8);
+      }
+    } else {
+      setConcentrationCircles([]);
+      setMapCenter([34.0151, 71.5249]);
+      setMapZoom(8);
+    }
+  }, [filteredData]);
+
+  // Function to calculate concentration circles based on data density
+  const calculateConcentrationCircles = (data) => {
+    const circles = [];
+    const processedLocations = new Set();
+
+    data.forEach(entry => {
+      const lat = parseFloat(entry.lat);
+      const lng = parseFloat(entry.log);
+      const outOfSchoolCount = Number(entry.outOfSchoolChildren) || 0;
+
+      // Skip invalid coordinates or zero out-of-school children
+      if (isNaN(lat) || isNaN(lng) || outOfSchoolCount === 0) return;
+
+      const locationKey = `${lat.toFixed(4)}_${lng.toFixed(4)}`;
+      if (processedLocations.has(locationKey)) return;
+      processedLocations.add(locationKey);
+
+      // Find nearby entries within 0.05 degrees (~5km)
+      const nearbyEntries = data.filter(otherEntry => {
+        const otherLat = parseFloat(otherEntry.lat);
+        const otherLng = parseFloat(otherEntry.log);
+        if (isNaN(otherLat) || isNaN(otherLng)) return false;
+
+        const distance = Math.sqrt(
+          Math.pow(lat - otherLat, 2) + Math.pow(lng - otherLng, 2)
+        );
+        return distance <= 0.05; // ~5km radius
+      });
+
+      // Calculate total out-of-school children in the area
+      const schoolEntries = nearbyEntries.filter(e => (e.schoolType || 'School') === 'School');
+      const madrasaEntries = nearbyEntries.filter(e => (e.schoolType || 'School') === 'Madrasa');
+
+      const schoolOutOfSchool = schoolEntries.reduce((sum, e) => sum + (Number(e.outOfSchoolChildren) || 0), 0);
+      const madrasaOutOfSchool = madrasaEntries.reduce((sum, e) => sum + (Number(e.outOfSchoolChildren) || 0), 0);
+
+      // Create circles for significant concentrations (minimum threshold of 10 children)
+      if (schoolOutOfSchool >= 10) {
+        const intensity = Math.min(schoolOutOfSchool / 500, 1); // Normalize intensity
+        circles.push({
+          center: [lat, lng],
+          radius: Math.min(Math.max(schoolOutOfSchool * 8, 800), 4000), // Scale radius based on count
+          color: '#dc2626', // Red for out-of-school children
+          fillColor: '#dc2626',
+          fillOpacity: Math.max(0.2, Math.min(intensity * 0.7, 0.7)),
+          weight: 2,
+          type: 'school',
+          count: schoolOutOfSchool,
+          totalEntries: schoolEntries.length,
+          district: entry.district || 'Unknown'
+        });
+      }
+
+      if (madrasaOutOfSchool >= 10) {
+        const intensity = Math.min(madrasaOutOfSchool / 500, 1); // Normalize intensity
+        circles.push({
+          center: [lat, lng],
+          radius: Math.min(Math.max(madrasaOutOfSchool * 8, 800), 4000), // Scale radius based on count
+          color: '#059669', // Green for out-of-madrasa children
+          fillColor: '#059669',
+          fillOpacity: Math.max(0.2, Math.min(intensity * 0.7, 0.7)),
+          weight: 2,
+          type: 'madrasa',
+          count: madrasaOutOfSchool,
+          totalEntries: madrasaEntries.length,
+          district: entry.district || 'Unknown'
+        });
+      }
+    });
+
+    // Sort circles by count (largest first) to ensure proper layering
+    return circles.sort((a, b) => b.count - a.count);
+  };
 
   // Activity data
 
@@ -240,11 +395,87 @@ function BottomSection({ filteredData = [], loading = false }) {
           </div>
         </div>
 
-        {/* Activity */}
+        {/* Concentration Map */}
         <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100">
-          <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">Map</h3>
+          <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6">
+            Out-of-School Children Concentration Map
+          </h3>
           <div className="space-y-4">
+            {/* Legend and Statistics */}
+            <div className="flex flex-wrap justify-between items-center gap-4">
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-red-500 opacity-60"></div>
+                  <span>Out-of-School Children</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-500 opacity-60"></div>
+                  <span>Out-of-Madrasa Children</span>
+                </div>
+              </div>
 
+              {concentrationCircles.length > 0 && (
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">{concentrationCircles.length}</span> concentration area{concentrationCircles.length !== 1 ? 's' : ''} found
+                </div>
+              )}
+            </div>
+
+            {/* Map Container */}
+            <div className="h-80 border border-gray-300 rounded-lg overflow-hidden">
+              {concentrationCircles.length === 0 ? (
+                <div className="flex items-center justify-center h-full bg-gray-50">
+                  <div className="text-center">
+                    <p className="text-gray-500 mb-2">No concentration data available</p>
+                    <p className="text-sm text-gray-400">Try adjusting your filters</p>
+                  </div>
+                </div>
+              ) : (
+                <MapContainer
+                  center={mapCenter}
+                  zoom={mapZoom}
+                  style={{ height: '100%', width: '100%' }}
+                  className="z-0"
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <MapController center={mapCenter} zoom={mapZoom} />
+
+                  {/* Render concentration circles */}
+                  {concentrationCircles.map((circle, index) => (
+                    <Circle
+                      key={`${circle.type}-${index}-${circle.center[0]}-${circle.center[1]}`}
+                      center={circle.center}
+                      radius={circle.radius}
+                      pathOptions={{
+                        color: circle.color,
+                        fillColor: circle.fillColor,
+                        fillOpacity: circle.fillOpacity,
+                        weight: circle.weight,
+                        opacity: 0.8
+                      }}
+                    >
+                      <Popup>
+                        <div className="text-sm min-w-48">
+                          <h4 className="font-semibold mb-2 text-gray-800">
+                            {circle.type === 'school' ? '🏫 Out-of-School Children' : '🕌 Out-of-Madrasa Children'}
+                          </h4>
+                          <div className="space-y-1">
+                            <p><strong>Children Count:</strong> <span className="text-red-600">{circle.count.toLocaleString()}</span></p>
+                            <p><strong>District:</strong> {circle.district}</p>
+                            <p><strong>Locations:</strong> {circle.totalEntries}</p>
+                            <p><strong>Institution Type:</strong> {circle.type === 'school' ? 'School' : 'Madrasa'}</p>
+                            <p><strong>Coordinates:</strong> {circle.center[0].toFixed(4)}, {circle.center[1].toFixed(4)}</p>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Circle>
+                  ))}
+                </MapContainer>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -614,7 +614,6 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
   const handleAddEntry = async () => {
     // Check if program type is "Other" and custom type is empty
     const finalProgramType = formData.programType === 'Other' ? formData.customProgramType : formData.programType;
-
     if (
       !formData.district ||
       !formData.totalChildren ||
@@ -632,8 +631,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       !formData.totalTeachers ||
       // !formData.requiredFaculty||
       !formData.girlsPercentage||
-      !formData.boysPercentage||
-      !formData.schoolType
+      !formData.boysPercentage
     ) {
       showToast('Please fill in all required fields', 'error')
       return
