@@ -93,6 +93,22 @@ const handleInputChange = (field, value) => {
       }, 500); // 500ms debounce delay
     }
 
+    // Special handling for age field to ensure proper format (digits and single hyphen)
+    if (field === 'age') {
+      // Remove any characters that aren't digits or hyphens
+      let formattedValue = value.replace(/[^0-9-]/g, '');
+
+      // Ensure only one hyphen is present
+      const hyphenCount = (formattedValue.match(/-/g) || []).length;
+      if (hyphenCount > 1) {
+        // Keep only the first hyphen
+        const parts = formattedValue.split('-');
+        formattedValue = parts[0] + '-' + parts.slice(1).join('');
+      }
+
+      value = formattedValue;
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -350,6 +366,10 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
     const totalChildren = parseInt(data.totalChildren) || 0;
     const calculatedRequiredFaculty = Math.floor(totalChildren / 40);
 
+    // Keep the full age range as a string (e.g., "5-9" remains "5-9")
+    // Since the backend now expects a string type for age
+    let ageValue = data.age || '';
+
     return {
       district: data.district,
       totalChildren: parseInt(data.totalChildren) || 0,
@@ -368,10 +388,10 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       lat: lat,
       log: log,
       tehsil: data.tehsil,
-      age: data.age,
+      age: ageValue,
       totalTeachers: parseInt(data.totalTeachers) || 0,
       requiredFaculty: calculatedRequiredFaculty || 0,
-      schoolType: data.schoolType
+      schoolType: data.schoolType || 'School'
     }
   }
 
@@ -629,12 +649,21 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       !formData.national ||
       !formData.age ||
       !formData.totalTeachers ||
-      // !formData.requiredFaculty||
       !formData.girlsPercentage||
       !formData.boysPercentage
     ) {
       showToast('Please fill in all required fields', 'error')
       return
+    }
+
+    // Validate date is in the future
+    const selectedDate = new Date(formData.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time part for accurate date comparison
+
+    if (selectedDate <= today) {
+      showToast('Please select a future date', 'error');
+      return;
     }
  // Validation: Out of School Children <= Total Children
     const totalChildren = parseInt(formData.totalChildren) || 0;
@@ -705,10 +734,30 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
       return;
     }
 
-    // Validation: Age >= 0
-    if(formData.age < 0){
-      showToast('Age should not be negative', 'error');
-      return;
+    // Validation: Age format and values
+    if (formData.age) {
+      // Check if age is in the correct format (e.g., "5-9")
+      const ageFormatRegex = /^\d+(-\d+)?$/;
+      if (!ageFormatRegex.test(formData.age)) {
+        showToast('Age should be in format like "5-9" or a single number', 'error');
+        return;
+      }
+
+      // If it's a range, check that the first number is less than the second
+      if (formData.age.includes('-')) {
+        const [start, end] = formData.age.split('-').map(num => parseInt(num));
+        if (start >= end) {
+          showToast('In age range, the first number should be less than the second', 'error');
+          return;
+        }
+      }
+
+      // Check for negative values
+      const hasNegative = formData.age.split('-').some(part => parseInt(part) < 0);
+      if (hasNegative) {
+        showToast('Age should not be negative', 'error');
+        return;
+      }
     }
 
     try {
@@ -754,6 +803,26 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
 
       const isCustomProgramType = !predefinedOptions.includes(entry.programType);
 
+      // Convert single age value to age range format
+      let ageDisplay = String(entry.age || '');
+      if (ageDisplay && !ageDisplay.includes('-')) {
+        const age = parseInt(ageDisplay);
+        if (!isNaN(age)) {
+          // Define age ranges
+          if (age >= 3 && age <= 5) {
+            ageDisplay = '3-5';
+          } else if (age >= 5 && age <= 9) {
+            ageDisplay = '5-9';
+          } else if (age >= 10 && age <= 14) {
+            ageDisplay = '10-14';
+          } else if (age >= 15 && age <= 17) {
+            ageDisplay = '15-17';
+          } else if (age >= 18&& age <= 24) {
+            ageDisplay = '18-24';
+          }
+        }
+      }
+
       setFormData({
         district: entry.district || '',
         totalChildren: entry.totalChildren || '',
@@ -772,7 +841,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
         national: entry.national || '',
         location: entry.lat+","+entry.log || '',
         tehsil: entry.tehsil || '',
-        age: entry.age || '',
+        age: ageDisplay,
         totalTeachers: entry.totalTeachers || '',
         requiredFaculty: entry.requiredFaculty || '',
         schoolType: entry.schoolType || 'School'
@@ -1288,22 +1357,26 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
                       type="date"
                       value={formData.date}
                       onChange={(e) => handleInputChange('date', e.target.value)}
-                      className="w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg shadow-sm"
+                      min={new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]}
+                      className={`w-full px-4 py-2 sm:py-3 rounded-lg border ${new Date(formData.date) <= new Date() ? 'border-red-500 focus:ring-2 focus:ring-red-400' : 'border-blue-100 focus:ring-2 focus:ring-blue-200'} bg-[#F8F9FA] focus:outline-none text-base sm:text-lg shadow-sm`}
                     />
+                    {new Date(formData.date) <= new Date() && formData.date && (
+                      <span className="text-xs text-red-600 mt-1 block">Please select a future date</span>
+                    )}
                   </div>
 
                   {/* Age */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Age Group</label>
                     <input
                       type="text"
                       value={formData.age}
                       onChange={(e) => handleInputChange('age', e.target.value)}
-                      className= {parseInt(formData.age)<0 ? "w-full px-4 py-2 sm:py-3 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-base sm:text-lg placeholder-gray-400 shadow-sm" : "w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"}
-                      placeholder="e.g. 5-9, 10-16"
+                      className= {formData.age && !(/^\d+(-\d+)?$/.test(formData.age)) ? "w-full px-4 py-2 sm:py-3 rounded-lg border border-red-500 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-red-400 text-base sm:text-lg placeholder-gray-400 shadow-sm" : "w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"}
+                      placeholder="e.g. 5-9, 10-17"
                     />
-                    {parseInt(formData.age)<0 && (
-                      <span className="text-xs text-red-600 mt-1 block">Age should be positive</span>
+                    {formData.age && !(/^\d+(-\d+)?$/.test(formData.age)) && (
+                      <span className="text-xs text-red-600 mt-1 block">Age should be in format like "5-9" or a single number</span>
                     )}
 
                   </div>
@@ -1329,19 +1402,7 @@ const transformFormDataForAPI = (data, markerPosition = null, isEdit = false) =>
     </div>
   </div>
 </div>
-
-                  {/* Required Faculty */}
-                  {/* <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 hidden">Required Faculty</label>
-                    <input
-                      type="number"
-                      value={formData.requiredFaculty}
-                      onChange={(e) => handleInputChange('requiredFaculty', e.target.value)}
-                      className=" hidden w-full px-4 py-2 sm:py-3 rounded-lg border border-blue-100 bg-[#F8F9FA] focus:outline-none focus:ring-2 focus:ring-blue-200 text-base sm:text-lg placeholder-gray-400 shadow-sm"
-                      placeholder="Number of required faculty"
-                      min="0"
-                    />
-                  </div> */}
+                  
 
               </div>
 

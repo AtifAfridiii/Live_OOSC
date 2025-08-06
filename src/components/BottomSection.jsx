@@ -230,7 +230,10 @@ function BottomSection({ filteredData = [], loading = false }) {
           type: 'school',
           count: schoolOutOfSchool,
           totalEntries: schoolEntries.length,
-          district: entry.district || 'Unknown'
+          district: entry.district || 'Unknown',
+          tehsil:entry.tehsil||'Unknown',
+          unioncouncil:entry.unioncouncil||'Unknown',
+          village:entry.villagecouncil||'Unknown'
         });
       }
 
@@ -246,7 +249,10 @@ function BottomSection({ filteredData = [], loading = false }) {
           type: 'madrasa',
           count: madrasaOutOfSchool,
           totalEntries: madrasaEntries.length,
-          district: entry.district || 'Unknown'
+          district: entry.district || 'Unknown',
+          tehsil:entry.tehsil||'Unknown',
+          unioncouncil:entry.unioncouncil||'Unknown',
+          village:entry.villagecouncil||'Unknown'
         });
       }
     });
@@ -255,7 +261,7 @@ function BottomSection({ filteredData = [], loading = false }) {
     return circles.sort((a, b) => b.count - a.count);
   };
 
-  // Activity data
+
 
 
   // Show loading state
@@ -372,7 +378,7 @@ function BottomSection({ filteredData = [], loading = false }) {
       </div>
 
 
-      {/* Right Column - Drop-out Reasons and Activity */}
+      {/* Right Column - Drop-out Reasons and Map*/}
       <div className="space-y-4 md:space-y-6">
         {/* Drop-out Reasons */}
         <div className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-100">
@@ -465,6 +471,9 @@ function BottomSection({ filteredData = [], loading = false }) {
                           <div className="space-y-1">
                             <p><strong>Children Count:</strong> <span className="text-red-600">{circle.count.toLocaleString()}</span></p>
                             <p><strong>District:</strong> {circle.district}</p>
+                            <p><strong>Tehsil:</strong>{circle.tehsil}</p>
+                            <p><strong>Union Council:</strong>{circle.unioncouncil}</p>
+                            <p><strong>Village Council:</strong>{circle.village}</p>
                             <p><strong>Locations:</strong> {circle.totalEntries}</p>
                             <p><strong>Institution Type:</strong> {circle.type === 'school' ? 'School' : 'Madrasa'}</p>
                             <p><strong>Coordinates:</strong> {circle.center[0].toFixed(4)}, {circle.center[1].toFixed(4)}</p>

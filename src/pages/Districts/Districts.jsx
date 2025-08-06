@@ -297,7 +297,7 @@ export default function DistrictsPage() {
   </div>
 </div>
 
-  <div className="flex item-end justify-end mt-4">
+  {/* <div className="flex item-end justify-end mt-4">
     <div className="
     flex flex-col md:flex-row
     items-center justify-end
@@ -315,7 +315,7 @@ export default function DistrictsPage() {
     View on Map
     </button>
   </div>
-  </div>
+  </div> */}
 
             </div>
         </>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Bell, User, Menu } from 'lucide-react'
+import {  Bell, User, Menu } from 'lucide-react'
 import { getUserData } from '../utils/authHelpers'
 
 const Header = ({ onMenuClick }) => {
@@ -55,7 +55,7 @@ const Header = ({ onMenuClick }) => {
 
         {/* Right side - Search, Notifications, Profile */}
         <div className="flex items-center space-x-2 md:space-x-4">
-         
+
 
 
           {/* Notifications */}
@@ -79,11 +79,11 @@ const Header = ({ onMenuClick }) => {
                 </div>
               )}
             </div>
-            <button className="hidden sm:block text-gray-700 hover:text-gray-900 transition-colors duration-200">
+            {/* <button className="hidden sm:block text-gray-700 hover:text-gray-900 transition-colors duration-200">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

@@ -63,6 +63,16 @@ const MainContent = () => {
   const [error, setError] = useState(null)
   const [filteredData, setFilteredData] = useState([])
 
+  // Loading states for individual cascading filters
+  const [cascadingLoading, setCascadingLoading] = useState({
+    tehsil: false,
+    unioncouncil: false,
+    villagecouncil: false,
+    pk: false,
+    national: false,
+    program: false
+  })
+
   // Additional filters visibility state
   const [showAdditionalFilters, setShowAdditionalFilters] = useState(false)
 
@@ -95,38 +105,9 @@ const MainContent = () => {
       const nationals = ['All', ...new Set(data.map(entry => entry.national).filter(Boolean))];
       const programs = ['All', ...new Set(data.map(entry => entry.programType).filter(Boolean))];
 
-      // Extract individual age values from the age field
-      const ageSet = new Set();
-      data.forEach(entry => {
-        if (entry.age) {
-          // Parse age field which might contain ranges like "6-9,10-16" or individual ages
-          const ageString = entry.age.toString();
-          // Split by comma to handle multiple age ranges/values
-          const ageParts = ageString.split(',').map(part => part.trim());
+      // Define predefined age ranges for filtering
+      const ageGroups = ['All', '5-9', '10-17'];
 
-          ageParts.forEach(part => {
-            // Check if it's a range (contains hyphen)
-            if (part.includes('-')) {
-              const [start, end] = part.split('-').map(num => parseInt(num.trim()));
-              if (!isNaN(start) && !isNaN(end)) {
-                // Add all individual ages in the range
-                for (let age = start; age <= end; age++) {
-                  ageSet.add(age);
-                }
-              }
-            } else {
-              // Single age value
-              const age = parseInt(part);
-              if (!isNaN(age)) {
-                ageSet.add(age);
-              }
-            }
-          });
-        }
-      });
-
-      // Convert to sorted array of age values
-      const ageGroups = ['All', ...Array.from(ageSet).sort((a, b) => a - b)];
 
       setFilterOptions({
         districts,
@@ -144,23 +125,84 @@ const MainContent = () => {
     }
   }, [fetchAllEntries]);
 
-  // Fetch cascading filter options based on selected district
-  const fetchCascadingFilterOptions = useCallback(async (selectedDistrict) => {
+  // Enhanced cascading filter options based on selected filters
+  const fetchCascadingFilterOptions = useCallback(async (filterType, selectedValue, currentFilters = filters) => {
+    // Set loading state for dependent filters
+    const dependentFilters = {
+      'district': ['tehsil', 'unioncouncil', 'villagecouncil', 'pk', 'national', 'program'],
+      'tehsil': ['unioncouncil', 'villagecouncil', 'pk', 'national', 'program'],
+      'unioncouncil': ['villagecouncil', 'pk', 'national', 'program'],
+      'villagecouncil': ['pk', 'national', 'program'],
+      'pk': ['national', 'program'],
+      'national': ['program']
+    };
+
+    const dependents = dependentFilters[filterType] || [];
+
+    // Set loading states for dependent filters
+    setCascadingLoading(prev => {
+      const newState = { ...prev };
+      dependents.forEach(dep => {
+        newState[dep] = true;
+      });
+      return newState;
+    });
+
     try {
       const data = await fetchAllEntries();
 
-      // Filter data by selected district if not 'All'
-      const districtFilteredData = selectedDistrict === 'All'
-        ? data
-        : data.filter(entry => entry.district === selectedDistrict);
+      // Apply all current filters up to the changed filter level
+      let filteredData = data;
 
-      // Extract unique values for cascading filters based on district selection
-      const tehsils = ['All', ...new Set(districtFilteredData.map(entry => entry.tehsil).filter(Boolean))];
-      const unioncouncils = ['All', ...new Set(districtFilteredData.map(entry => entry.unioncouncil).filter(Boolean))];
-      const villagecouncils = ['All', ...new Set(districtFilteredData.map(entry => entry.villagecouncil).filter(Boolean))];
-      const pks = ['All', ...new Set(districtFilteredData.map(entry => entry.pk).filter(Boolean))];
-      const nationals = ['All', ...new Set(districtFilteredData.map(entry => entry.national).filter(Boolean))];
-      const programs = ['All', ...new Set(districtFilteredData.map(entry => entry.programType).filter(Boolean))];
+      // Apply filters in hierarchy order
+      if (currentFilters.district !== 'All') {
+        filteredData = filteredData.filter(entry => entry.district === currentFilters.district);
+      }
+
+      if (filterType !== 'tehsil' && currentFilters.tehsil !== 'All') {
+        filteredData = filteredData.filter(entry => entry.tehsil === currentFilters.tehsil);
+      }
+
+      if (filterType !== 'unioncouncil' && filterType !== 'tehsil' && currentFilters.unioncouncil !== 'All') {
+        filteredData = filteredData.filter(entry => entry.unioncouncil === currentFilters.unioncouncil);
+      }
+
+      if (filterType !== 'villagecouncil' && filterType !== 'unioncouncil' && filterType !== 'tehsil' && currentFilters.villagecouncil !== 'All') {
+        filteredData = filteredData.filter(entry => entry.villagecouncil === currentFilters.villagecouncil);
+      }
+
+      if (filterType !== 'pk' && filterType !== 'villagecouncil' && filterType !== 'unioncouncil' && filterType !== 'tehsil' && currentFilters.pk !== 'All') {
+        filteredData = filteredData.filter(entry => entry.pk === currentFilters.pk);
+      }
+
+      if (filterType !== 'national' && filterType !== 'pk' && filterType !== 'villagecouncil' && filterType !== 'unioncouncil' && filterType !== 'tehsil' && currentFilters.national !== 'All') {
+        filteredData = filteredData.filter(entry => entry.national === currentFilters.national);
+      }
+
+      // Apply the current selection if it's not 'All'
+      if (selectedValue !== 'All') {
+        const fieldMap = {
+          'district': 'district',
+          'tehsil': 'tehsil',
+          'unioncouncil': 'unioncouncil',
+          'villagecouncil': 'villagecouncil',
+          'pk': 'pk',
+          'national': 'national',
+          'program': 'programType'
+        };
+
+        if (fieldMap[filterType]) {
+          filteredData = filteredData.filter(entry => entry[fieldMap[filterType]] === selectedValue);
+        }
+      }
+
+      // Extract unique values for all cascading filters based on current selection
+      const tehsils = ['All', ...new Set(filteredData.map(entry => entry.tehsil).filter(Boolean))];
+      const unioncouncils = ['All', ...new Set(filteredData.map(entry => entry.unioncouncil).filter(Boolean))];
+      const villagecouncils = ['All', ...new Set(filteredData.map(entry => entry.villagecouncil).filter(Boolean))];
+      const pks = ['All', ...new Set(filteredData.map(entry => entry.pk).filter(Boolean))];
+      const nationals = ['All', ...new Set(filteredData.map(entry => entry.national).filter(Boolean))];
+      const programs = ['All', ...new Set(filteredData.map(entry => entry.programType).filter(Boolean))];
 
       // Update filter options with cascading data
       setFilterOptions(prev => ({
@@ -172,10 +214,27 @@ const MainContent = () => {
         nationals,
         programs
       }));
+
+      // Clear loading states for dependent filters
+      setCascadingLoading(prev => {
+        const newState = { ...prev };
+        dependents.forEach(dep => {
+          newState[dep] = false;
+        });
+        return newState;
+      });
     } catch (error) {
       console.error('Error fetching cascading filter options:', error);
+      // Clear loading states on error too
+      setCascadingLoading(prev => {
+        const newState = { ...prev };
+        dependents.forEach(dep => {
+          newState[dep] = false;
+        });
+        return newState;
+      });
     }
-  }, [fetchAllEntries]);
+  }, [fetchAllEntries, filters]);
 
   // Apply filters to data
   const applyFilters = useCallback((data, currentFilters) => {
@@ -215,36 +274,41 @@ const MainContent = () => {
         return false;
       }
 
-      // Age filter - check if the selected age is present in the entry's age field
-      if (currentFilters.ageGroup !== 'All') {
-        const selectedAge = parseInt(currentFilters.ageGroup);
-        if (!isNaN(selectedAge) && entry.age) {
-          const ageString = entry.age.toString();
-          const ageParts = ageString.split(',').map(part => part.trim());
-
-          let ageMatches = false;
-          ageParts.forEach(part => {
-            // Check if it's a range (contains hyphen)
-            if (part.includes('-')) {
-              const [start, end] = part.split('-').map(num => parseInt(num.trim()));
-              if (!isNaN(start) && !isNaN(end)) {
-                // Check if selected age is within the range
-                if (selectedAge >= start && selectedAge <= end) {
-                  ageMatches = true;
-                }
-              }
-            } else {
-              // Single age value
-              const age = parseInt(part);
-              if (!isNaN(age) && age === selectedAge) {
+      // Age filter - check if the selected age range overlaps with the entry's age field
+      if (currentFilters.ageGroup !== 'All' && entry.age) {
+        const selectedAgeRange = currentFilters.ageGroup;
+        const ageString = entry.age.toString();
+        const ageParts = ageString.split(',').map(part => part.trim());
+        
+        // Parse the selected age range
+        const [selectedStart, selectedEnd] = selectedAgeRange.split('-').map(num => parseInt(num.trim()));
+        
+        let ageMatches = false;
+        ageParts.forEach(part => {
+          // Check if entry age is a range (contains hyphen)
+          if (part.includes('-')) {
+            const [entryStart, entryEnd] = part.split('-').map(num => parseInt(num.trim()));
+            if (!isNaN(entryStart) && !isNaN(entryEnd) && !isNaN(selectedStart) && !isNaN(selectedEnd)) {
+              // Check if the ranges overlap
+              // Two ranges overlap if one range's start is <= other range's end AND one range's end is >= other range's start
+              if (entryStart <= selectedEnd && entryEnd >= selectedStart) {
                 ageMatches = true;
               }
             }
-          });
-
-          if (!ageMatches) {
-            return false;
+          } else {
+            // Single age value
+            const age = parseInt(part);
+            if (!isNaN(age) && !isNaN(selectedStart) && !isNaN(selectedEnd)) {
+              // Check if the single age is within the selected range
+              if (age >= selectedStart && age <= selectedEnd) {
+                ageMatches = true;
+              }
+            }
           }
+        });
+
+        if (!ageMatches) {
+          return false;
         }
       }
 
@@ -455,33 +519,54 @@ const MainContent = () => {
     setShowAdditionalFilters(prev => !prev);
   };
 
-  // Filter change handlers
+  // Enhanced filter change handlers with full cascading support
   const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+    // Define the hierarchy and what filters should be reset for each level
+    const filterHierarchy = {
+      'district': ['tehsil', 'unioncouncil', 'villagecouncil', 'pk', 'national', 'program'],
+      'tehsil': ['unioncouncil', 'villagecouncil', 'pk', 'national', 'program'],
+      'unioncouncil': ['villagecouncil', 'pk', 'national', 'program'],
+      'villagecouncil': ['pk', 'national', 'program'],
+      'pk': ['national', 'program'],
+      'national': ['program']
+    };
 
-    // If district changes, update cascading filters and reset dependent filters
-    if (filterType === 'district') {
-      fetchCascadingFilterOptions(value);
+    const dependentFilters = filterHierarchy[filterType] || [];
 
-      // Show additional filters when a specific district is selected
-      if (value !== 'All') {
+    // Update the current filter and reset dependent filters
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        [filterType]: value
+      };
+
+      // Reset all dependent filters to 'All'
+      dependentFilters.forEach(depFilter => {
+        newFilters[depFilter] = 'All';
+      });
+
+      return newFilters;
+    });
+
+    // Handle cascading filter updates for geographic hierarchy
+    if (filterHierarchy[filterType]) {
+      // Show additional filters when a specific value is selected (not 'All')
+      if (filterType === 'district' && value !== 'All') {
         setShowAdditionalFilters(true);
       }
 
-      // Reset dependent filters when district changes
-      setFilters(prev => ({
-        ...prev,
-        [filterType]: value,
-        tehsil: 'All',
-        unioncouncil: 'All',
-        villagecouncil: 'All',
-        pk: 'All',
-        national: 'All',
-        program: 'All'
-      }));
+      // Fetch cascading options for dependent filters
+      const updatedFilters = {
+        ...filters,
+        [filterType]: value
+      };
+
+      // Reset dependent filters in the updated filters object
+      dependentFilters.forEach(depFilter => {
+        updatedFilters[depFilter] = 'All';
+      });
+
+      fetchCascadingFilterOptions(filterType, value, updatedFilters);
     }
 
     // Close the dropdown after selection
@@ -741,14 +826,19 @@ const MainContent = () => {
                   <button
                     onClick={() => toggleDropdown('tehsil')}
                     className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                    disabled={cascadingLoading.tehsil}
                   >
                     <span className="truncate">
                       {filters.tehsil === 'All' ? 'Tehsil' : filters.tehsil}
                     </span>
-                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.tehsil ? 'rotate-180' : ''}`} />
+                    {cascadingLoading.tehsil ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.tehsil ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
 
-                  {dropdownStates.tehsil && (
+                  {dropdownStates.tehsil && !cascadingLoading.tehsil && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filterOptions.tehsils.map((option) => (
                         <button
@@ -770,14 +860,19 @@ const MainContent = () => {
                   <button
                     onClick={() => toggleDropdown('unioncouncil')}
                     className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                    disabled={cascadingLoading.unioncouncil}
                   >
                     <span className="truncate">
                       {filters.unioncouncil === 'All' ? 'Union Council' : filters.unioncouncil}
                     </span>
-                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.unioncouncil ? 'rotate-180' : ''}`} />
+                    {cascadingLoading.unioncouncil ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.unioncouncil ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
 
-                  {dropdownStates.unioncouncil && (
+                  {dropdownStates.unioncouncil && !cascadingLoading.unioncouncil && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filterOptions.unioncouncils.map((option) => (
                         <button
@@ -799,14 +894,19 @@ const MainContent = () => {
                   <button
                     onClick={() => toggleDropdown('villagecouncil')}
                     className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                    disabled={cascadingLoading.villagecouncil}
                   >
                     <span className="truncate">
                       {filters.villagecouncil === 'All' ? 'Village Council' : filters.villagecouncil}
                     </span>
-                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.villagecouncil ? 'rotate-180' : ''}`} />
+                    {cascadingLoading.villagecouncil ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.villagecouncil ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
 
-                  {dropdownStates.villagecouncil && (
+                  {dropdownStates.villagecouncil && !cascadingLoading.villagecouncil && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filterOptions.villagecouncils.map((option) => (
                         <button
@@ -828,14 +928,19 @@ const MainContent = () => {
                   <button
                     onClick={() => toggleDropdown('pk')}
                     className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                    disabled={cascadingLoading.pk}
                   >
                     <span className="truncate">
                       {filters.pk === 'All' ? 'PK' : filters.pk}
                     </span>
-                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.pk ? 'rotate-180' : ''}`} />
+                    {cascadingLoading.pk ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.pk ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
 
-                  {dropdownStates.pk && (
+                  {dropdownStates.pk && !cascadingLoading.pk && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filterOptions.pks.map((option) => (
                         <button
@@ -857,14 +962,19 @@ const MainContent = () => {
                   <button
                     onClick={() => toggleDropdown('national')}
                     className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                    disabled={cascadingLoading.national}
                   >
                     <span className="truncate">
                       {filters.national === 'All' ? 'National' : filters.national}
                     </span>
-                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.national ? 'rotate-180' : ''}`} />
+                    {cascadingLoading.national ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.national ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
 
-                  {dropdownStates.national && (
+                  {dropdownStates.national && !cascadingLoading.national && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filterOptions.nationals.map((option) => (
                         <button
@@ -886,14 +996,19 @@ const MainContent = () => {
                   <button
                     onClick={() => toggleDropdown('program')}
                     className="w-full bg-[#4A90E2] hover:bg-[#2c5aa0] text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-between transition-colors duration-200"
+                    disabled={cascadingLoading.program}
                   >
                     <span className="truncate">
                       {filters.program === 'All' ? 'Program' : filters.program}
                     </span>
-                    <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.program ? 'rotate-180' : ''}`} />
+                    {cascadingLoading.program ? (
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    ) : (
+                      <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 ${dropdownStates.program ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
 
-                  {dropdownStates.program && (
+                  {dropdownStates.program && !cascadingLoading.program && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filterOptions.programs.map((option) => (
                         <button
@@ -963,7 +1078,6 @@ const MainContent = () => {
         <BottomSection filteredData={filteredData} loading={loading} />
 
         {/* Action Buttons */}
-        <ActionButtons />
       </div>
     </main>
   )

@@ -590,7 +590,7 @@ export default function Programs() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-center justify-center w-full md:w-1/2 space-y-2 pt-4">
+                    {/* <div className="flex flex-col items-center justify-center w-full md:w-1/2 space-y-2 pt-4">
 
 
                         <button
@@ -611,7 +611,7 @@ export default function Programs() {
                         >
                             Add Beneficiary
                         </button>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </>
